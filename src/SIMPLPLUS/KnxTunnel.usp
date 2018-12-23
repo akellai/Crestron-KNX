@@ -1,0 +1,150 @@
+/*******************************************************************************************
+  SIMPL+ Module Information
+  (Fill in comments below)
+*******************************************************************************************/
+/*
+Dealer Name:
+System Name:
+System Number:
+Programmer:
+Comments:
+*/
+
+/*******************************************************************************************
+  Compiler Directives
+  (Uncomment and declare compiler directives as needed)
+*******************************************************************************************/
+// #ENABLE_DYNAMIC
+// #SYMBOL_NAME ""
+// #HINT ""
+// #DEFINE_CONSTANT
+// #CATEGORY "" 
+#CATEGORY "46" "KNX" // Custom
+// #PRINT_TO_TRACE
+// #DIGITAL_EXPAND 
+// #ANALOG_SERIAL_EXPAND 
+// #OUTPUT_SHIFT 
+// #HELP_PDF_FILE ""
+#DEFAULT_VOLATILE
+#ENABLE_STACK_CHECKING
+#ENABLE_TRACE
+// #ENCODING_ASCII
+// #ENCODING_UTF16
+// #ENCODING_INHERIT_FROM_PARENT
+// #ENCODING_INHERIT_FROM_PROGRAM
+/*
+#HELP_BEGIN
+   (add additional lines of help lines)
+#HELP_END
+*/
+
+/*******************************************************************************************
+  Include Libraries
+  (Uncomment and include additional libraries as needed)
+*******************************************************************************************/
+// #CRESTRON_LIBRARY ""
+// #USER_LIBRARY ""
+
+/*******************************************************************************************
+  DIGITAL, ANALOG and SERIAL INPUTS and OUTPUTS
+  (Uncomment and declare inputs and outputs as needed)
+*******************************************************************************************/
+DIGITAL_INPUT	_SKIP_;			DIGITAL_OUTPUT	_SKIP_;
+DIGITAL_INPUT	_SKIP_;			DIGITAL_OUTPUT	_SKIP_;
+DIGITAL_INPUT	_SKIP_;			DIGITAL_OUTPUT	_SKIP_;
+DIGITAL_INPUT	DEBUG;			DIGITAL_OUTPUT	_SKIP_;
+DIGITAL_INPUT	_SKIP_;			DIGITAL_OUTPUT	_SKIP_;
+
+DIGITAL_INPUT	Connect;		DIGITAL_OUTPUT	Connected;
+DIGITAL_INPUT	Disconnect;		DIGITAL_OUTPUT	Disconnected;
+
+STRING_INPUT	_SKIP_;			STRING_OUTPUT	_SKIP_;
+STRING_INPUT	TX$[1024];		STRING_OUTPUT	RX$;
+
+/*******************************************************************************************
+  Parameters
+  (Uncomment and declare parameters as needed)
+*******************************************************************************************/
+STRING_PARAMETER IpAddress[64];
+INTEGER_PARAMETER Port;
+INTEGER_PARAMETER RX_Buffer_Sz;
+#USER_SIMPLSHARP_LIBRARY "KnxTunnelSS"
+
+/*******************************************************************************************
+  Parameter Properties
+  (Uncomment and declare parameter properties as needed)
+*******************************************************************************************/
+#BEGIN_PARAMETER_PROPERTIES IpAddress
+   propDefaultValue="";
+#END_PARAMETER_PROPERTIES
+
+#BEGIN_PARAMETER_PROPERTIES Port
+   propValidUnits=unitDecimal;
+   propBounds=1d,65535d;
+   propDefaultValue=3671d;
+#END_PARAMETER_PROPERTIES
+
+#BEGIN_PARAMETER_PROPERTIES RX_BUFFER_SZ
+   propValidUnits=unitDecimal;
+   propBounds=16d,1024d;
+   propDefaultValue=200d;
+#END_PARAMETER_PROPERTIES
+
+KnxTunnel Client; 
+
+PUSH Connect
+{
+	Client.Connect(IpAddress,Port,RX_BUFFER_SZ);
+}
+
+PUSH Disconnect
+{
+	Client.Disconnect();
+}
+
+Callback Function MyOnConnect()
+{
+	Connected = 1;
+	Disconnected = 0;
+}
+
+Callback Function MyOnDisconnect()
+{
+	Connected = 0;
+	Disconnected = 1;
+	TRACE("On Disconnect\n");
+}
+
+Callback Function MyOnReceive(String s)
+{
+	RX$ = s;
+}
+
+Change TX$
+{
+	Client.Send(TX$);
+} 
+
+Change DEBUG
+{
+	TRACE("Debug is ON");
+	Client.Debug = DEBUG;
+}
+
+Function Init()
+{
+	RegisterDelegate(Client,OnConnect,MyOnConnect);
+	RegisterDelegate(Client,OnDisconnect,MyOnDisconnect);
+	RegisterDelegate(Client,OnRx,MyOnReceive);
+	Disconnected = 1;
+	Connected = 0;
+}
+
+Function Main()
+{
+	WaitForInitializationComplete();
+	Init();
+}
+
+
+

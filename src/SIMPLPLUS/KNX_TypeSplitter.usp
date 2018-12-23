@@ -1,0 +1,90 @@
+/*******************************************************************************************
+  SIMPL+ Module Information
+  (Fill in comments below)
+*******************************************************************************************/
+/*
+Dealer Name:
+System Name:KNX
+System Number:
+Programmer:
+Comments:
+*/
+
+/*******************************************************************************************
+  Compiler Directives
+  (Uncomment and declare compiler directives as needed)
+*******************************************************************************************/
+// #ENABLE_DYNAMIC
+// #SYMBOL_NAME ""
+// #HINT ""
+// #DEFINE_CONSTANT
+// #CATEGORY "" 
+#CATEGORY "46" "KNX" // Custom
+// #PRINT_TO_TRACE
+// #DIGITAL_EXPAND 
+// #ANALOG_SERIAL_EXPAND 
+// #OUTPUT_SHIFT 
+// #HELP_PDF_FILE ""
+#DEFAULT_VOLATILE
+#ENABLE_STACK_CHECKING
+#ENABLE_TRACE
+// #ENCODING_ASCII
+// #ENCODING_UTF16
+// #ENCODING_INHERIT_FROM_PARENT
+// #ENCODING_INHERIT_FROM_PROGRAM
+/*
+#HELP_BEGIN
+   (add additional lines of help lines)
+#HELP_END
+*/
+
+STRING_INPUT	_SKIP_;			STRING_OUTPUT	KNX_1bit_RX$;
+STRING_INPUT	_SKIP_;			STRING_OUTPUT	KNX_1Byte_RX$;
+STRING_INPUT	_SKIP_;			STRING_OUTPUT	KNX_2Byte_RX$;
+BUFFER_INPUT	TX$[64];		STRING_OUTPUT	RX$;
+
+change TX$
+{
+	string cmd[64],tmp[64];
+    integer pos1,lenght;
+
+	while(1)
+	{
+		cmd = remove(";",TX$);
+		if( len(Cmd)<2 )
+			break;
+
+		pos1 = Find(":",cmd);
+		if( pos1<1 )
+			break;
+
+ 	   tmp = Mid(cmd,pos1+1,3);
+    	lenght = atoi(tmp);
+
+		if( lenght = 1 )
+		{
+			KNX_1bit_RX$ = cmd;
+			break;
+		}
+
+		if( lenght = 2 )
+		{
+			KNX_1Byte_RX$ = cmd;
+			break;
+		}
+		if( lenght = 3 )
+		{
+			KNX_2Byte_RX$ = cmd;
+			break;
+		}
+
+		RX$ = cmd;
+		break;
+	}
+}
+
+Function Main()
+{
+	WaitForInitializationComplete();
+}
+

@@ -1,0 +1,149 @@
+/*******************************************************************************************
+  SIMPL+ Module Information
+  (Fill in comments below)
+*******************************************************************************************/
+/*
+Dealer Name:
+System Name:
+System Number:
+Programmer:
+Comments:
+*/
+
+/*******************************************************************************************
+  Compiler Directives
+  (Uncomment and declare compiler directives as needed)
+*******************************************************************************************/
+// #ENABLE_DYNAMIC
+// #SYMBOL_NAME ""
+// #HINT ""
+// #DEFINE_CONSTANT
+// #CATEGORY "" 
+#CATEGORY "46" "KNX" // Custom
+// #PRINT_TO_TRACE
+// #DIGITAL_EXPAND 
+// #ANALOG_SERIAL_EXPAND 
+// #OUTPUT_SHIFT 
+// #HELP_PDF_FILE ""
+#DEFAULT_VOLATILE
+#ENABLE_STACK_CHECKING
+#ENABLE_TRACE
+// #ENCODING_ASCII
+// #ENCODING_UTF16
+// #ENCODING_INHERIT_FROM_PARENT
+// #ENCODING_INHERIT_FROM_PROGRAM
+
+#HELP_BEGIN
+   KNX_1Bit - gets the input data in the format xx/yy/zz:len:val
+   and triggers on/off feedbacks if address matches
+#HELP_END
+
+/*******************************************************************************************
+  DIGITAL, ANALOG and SERIAL INPUTS and OUTPUTS
+  (Uncomment and declare inputs and outputs as needed)
+*******************************************************************************************/
+DIGITAL_INPUT	_SKIP_;			DIGITAL_OUTPUT	_SKIP_;
+DIGITAL_INPUT	_SKIP_;			DIGITAL_OUTPUT	_SKIP_;
+STRING_INPUT 	FromRX$[32];	ANALOG_OUTPUT Val_FB;
+DIGITAL_INPUT	_SKIP_;			ANALOG_OUTPUT Signed_Analog_Value;
+
+/*******************************************************************************************
+  Parameters
+  (Uncomment and declare parameters as needed)
+*******************************************************************************************/
+// INTEGER_PARAMETER
+// SIGNED_INTEGER_PARAMETER
+// LONG_INTEGER_PARAMETER
+// SIGNED_LONG_INTEGER_PARAMETER
+STRING_PARAMETER GroupAddress[9];
+SIGNED_INTEGER_PARAMETER Mantissa;
+
+/*******************************************************************************************
+  Parameter Properties
+  (Uncomment and declare parameter properties as needed)
+*******************************************************************************************/
+#BEGIN_PARAMETER_PROPERTIES GroupAddress
+   propDefaultValue="";
+#END_PARAMETER_PROPERTIES
+#BEGIN_PARAMETER_PROPERTIES Mantissa
+   propDefaultValue=1d;
+#END_PARAMETER_PROPERTIES
+
+STRING Prefix[12];
+INTEGER PrefixLen;
+
+integer VZ, Exp, Man, C, S;
+long_integer lout;
+signed_integer siout;
+
+function getVal(integer Value_2Byte)
+{
+VZ = Value_2Byte >> 15;           // plus/minus sign
+Exp = (Value_2Byte >> 11) & 0x0F; // exponent
+Man = Value_2Byte & 0x7FF;        // mantissa
+if (VZ)	
+	{
+	Man = NOT (Man);		  // 1st complement wenn neg value
+	Man = Man & 0x7FF;
+	}
+
+Man = Man << Exp; 				// Exp times (<= 15)
+
+if (Mantissa = 1)
+{
+  Man = (Man+5)/10;
+}
+if (Mantissa = 0)
+{
+  Man = (Man+49)/100; 
+}
+if (Mantissa >= 2)
+{	
+  Man = Man*10^(Mantissa-2);  
+}
+
+  lout = Man;  
+  //print("%ld\n",lout);
+
+  if(lout > 32767)
+	lout = 32767;
+  if(VZ)
+    siout = lout * (-1);         
+  else
+    siout = lout;
+  Signed_Analog_Value = siout;
+}
+
+CHANGE FromRX$
+{
+	integer pos;
+	string Cmd[32];
+
+	Cmd = FromRX$;
+	if( Cmd = "" )
+		return;
+
+	pos = Find(Prefix,Cmd);
+	if(pos = 1)
+	{
+		pos = HexToSI(mid(Cmd,PrefixLen+1,4));
+		Val_FB = pos;
+		call getVal(pos);
+	}	
+}
+
+/*******************************************************************************************
+  Main()
+  Uncomment and place one-time startup code here
+  (This code will get called when the system starts up)
+*******************************************************************************************/
+Function Main()
+{
+    // TODO:  Add code here
+    // Initialize declared global and local variables/arrays as needed.
+
+    WaitForInitializationComplete();
+	Prefix = GroupAddress + ":3:";
+	PrefixLen = len(Prefix);
+}
+

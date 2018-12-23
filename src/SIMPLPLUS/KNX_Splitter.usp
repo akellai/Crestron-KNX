@@ -1,0 +1,168 @@
+/*******************************************************************************************
+  SIMPL+ Module Information
+  (Fill in comments below)
+*******************************************************************************************/
+/*
+Dealer Name:
+System Name:KNX
+System Number:
+Programmer:
+Comments:
+*/
+
+/*******************************************************************************************
+  Compiler Directives
+  (Uncomment and declare compiler directives as needed)
+*******************************************************************************************/
+// #ENABLE_DYNAMIC
+// #SYMBOL_NAME ""
+// #HINT ""
+// #DEFINE_CONSTANT
+// #CATEGORY "" 
+#CATEGORY "46" "KNX" // Custom
+// #PRINT_TO_TRACE
+// #DIGITAL_EXPAND 
+// #ANALOG_SERIAL_EXPAND 
+// #OUTPUT_SHIFT 
+// #HELP_PDF_FILE ""
+#DEFAULT_VOLATILE
+#ENABLE_STACK_CHECKING
+#ENABLE_TRACE
+// #ENCODING_ASCII
+// #ENCODING_UTF16
+// #ENCODING_INHERIT_FROM_PARENT
+// #ENCODING_INHERIT_FROM_PROGRAM
+/*
+#HELP_BEGIN
+   (add additional lines of help lines)
+#HELP_END
+*/
+
+STRING_INPUT	_SKIP_;			STRING_OUTPUT	KNX_RX1$;
+STRING_INPUT	_SKIP_;			STRING_OUTPUT	KNX_RX2$;
+STRING_INPUT	_SKIP_;			STRING_OUTPUT	KNX_RX3$;
+STRING_INPUT	_SKIP_;			STRING_OUTPUT	KNX_RX4$;
+STRING_INPUT	_SKIP_;			STRING_OUTPUT	KNX_RX5$;
+STRING_INPUT	_SKIP_;			STRING_OUTPUT	KNX_RX6$;
+STRING_INPUT	_SKIP_;			STRING_OUTPUT	KNX_RX7$;
+STRING_INPUT	_SKIP_;			STRING_OUTPUT	KNX_RX8$;
+STRING_INPUT	TX$[256];		STRING_OUTPUT	RX$;
+
+STRING_PARAMETER G1[12];
+STRING_PARAMETER G2[12];
+STRING_PARAMETER G3[12];
+STRING_PARAMETER G4[12];
+STRING_PARAMETER G5[12];
+STRING_PARAMETER G6[12];
+STRING_PARAMETER G7[12];
+STRING_PARAMETER G8[12];
+
+#BEGIN_PARAMETER_PROPERTIES G1
+   propDefaultValue="";
+#END_PARAMETER_PROPERTIES
+
+#BEGIN_PARAMETER_PROPERTIES G2
+   propDefaultValue="";
+#END_PARAMETER_PROPERTIES
+
+#BEGIN_PARAMETER_PROPERTIES G3
+   propDefaultValue="";
+#END_PARAMETER_PROPERTIES
+
+#BEGIN_PARAMETER_PROPERTIES G4
+   propDefaultValue="";
+#END_PARAMETER_PROPERTIES
+
+#BEGIN_PARAMETER_PROPERTIES G5
+   propDefaultValue="";
+#END_PARAMETER_PROPERTIES
+
+#BEGIN_PARAMETER_PROPERTIES G6
+   propDefaultValue="";
+#END_PARAMETER_PROPERTIES
+
+#BEGIN_PARAMETER_PROPERTIES G7
+   propDefaultValue="";
+#END_PARAMETER_PROPERTIES
+
+#BEGIN_PARAMETER_PROPERTIES G8
+   propDefaultValue="";
+#END_PARAMETER_PROPERTIES
+
+change TX$
+{	
+	if( len(TX$)<2 )
+		return;
+
+	if( G1 <> "" )
+	{
+		if(Find(G1,TX$) = 1)
+		{
+			KNX_RX1$ = TX$;
+			return;
+		}
+	}
+	if( G2 <> "" )
+	{
+		if(Find(G2,TX$) = 1)
+		{
+			KNX_RX2$ = TX$;
+			return;
+		}
+	}
+	if( G3 <> "" )
+	{
+		if(Find(G3,TX$) = 1)
+		{
+			KNX_RX3$ = TX$;
+			return;
+		}
+	}
+	if( G4 <> "" )
+	{
+		if(Find(G4,TX$) = 1)
+		{
+			KNX_RX4$ = TX$;
+			return;
+		}
+	}
+	if( G5 <> "" )
+	{
+		if(Find(G5,TX$) = 1)
+		{
+			KNX_RX5$ = TX$;
+			return;
+		}
+	}
+	if( G6 <> "" )
+	{
+		if(Find(G6,TX$) = 1)
+		{
+			KNX_RX6$ = TX$;
+			return;
+		}
+	}
+	if( G7 <> "" )
+	{
+		if(Find(G7,TX$) = 1)
+		{
+			KNX_RX7$ = TX$;
+			return;
+		}
+	}
+	if( G8 <> "" )
+	{
+		if(Find(G8,TX$) = 1)
+		{
+			KNX_RX8$ = TX$;
+			return;
+		}
+	}
+	RX$ = TX$;
+}
+
+Function Main()
+{
+	WaitForInitializationComplete();
+}
+
