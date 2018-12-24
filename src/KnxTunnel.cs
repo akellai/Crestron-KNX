@@ -18,6 +18,27 @@ namespace KnxTunnelSS
         private readonly object _rxSequenceNumberLock = new object();
         private byte _rxSequenceNumber;
 
+        private readonly object keep_alive_lock = new object();
+        private DateTime m_keep_alive_time;
+
+        public bool Alive
+        {
+            get {
+                DateTime dt = DateTime.Now;
+                TimeSpan span = dt - m_keep_alive_time;
+                return ((int)span.TotalMilliseconds) < stateRequestTimerInterval;
+            }
+            set
+            {
+                if (value == true)
+                {
+                    CMonitor.Enter(keep_alive_lock);
+                    m_keep_alive_time = DateTime.Now;
+                    CMonitor.Exit(keep_alive_lock);
+                }
+            }
+        }
+
         String_Pacer Pacer;
 
         /// <summary>
@@ -64,7 +85,7 @@ namespace KnxTunnelSS
         /// </summary>
         public KnxTunnel()
         {
-            Pacer = new String_Pacer(128, 5);
+            Pacer = new String_Pacer(64, 20);   // do not send more than 50 signals a sec
             Pacer.OnChunk = MyChunkHandler;
             Pacer.OnSendItem = MySendItem;
             requestTimer = new CTimer(StateRequest, Timeout.Infinite);
@@ -182,7 +203,7 @@ namespace KnxTunnelSS
         public void udpReceiver(UDPServer session, int len)
         {
             Logger.Log("udpReceiver");
-
+            Alive = true;
             if (len == 0)
             {
                 Logger.Log("Size triggers Disconnect");
@@ -285,6 +306,13 @@ namespace KnxTunnelSS
 
         private void StateRequest(object sender)
         {
+            if (!Alive)
+            {
+                // nothing recieved since last keep alive
+                Disconnect();
+                return;
+            }
+
             // HEADER
             var datagram = new byte[16];
             Logger.Log("StateRequest");
@@ -412,7 +440,7 @@ namespace KnxTunnelSS
             Pacer.Enqueue(data);
 
             bool bret = data.Equals(prevKnxRx);
-            // bret = true;	Uncomment if repeates are ok
+            bret = true;    // never mond duplicates...
             if (bret)
             {
                 if (OnRx != null)
