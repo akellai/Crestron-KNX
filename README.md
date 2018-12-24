@@ -1,7 +1,7 @@
 Crestron SIMPL# module to work natively with KNX IP Tunneling protocol
 This allows working directly with generic IP KNX routers
 
-The idea is to convert EIB telegrams to strings in a text format like "1/2/3:1:00" and vuise versa.
+The idea is to convert EIB telegrams to strings in a text format like "1/2/3:1:00" and vice versa.
 
 some random comments:
 - Reconnect logic is not implemeted in the module. It's easy to add with an oscillator (enabled as soon as 'Not Connected' signal goes high)
