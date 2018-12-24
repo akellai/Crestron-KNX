@@ -85,7 +85,7 @@ namespace KnxTunnelSS
         /// </summary>
         public KnxTunnel()
         {
-            Pacer = new String_Pacer(64, 20);   // do not send more than 50 signals a sec
+            Pacer = new String_Pacer(64, 50);   // do not send more than 20 signals a sec
             Pacer.OnChunk = MyChunkHandler;
             Pacer.OnSendItem = MySendItem;
             requestTimer = new CTimer(StateRequest, Timeout.Infinite);
@@ -149,7 +149,10 @@ namespace KnxTunnelSS
             if (client != null)
             {
                 if (client.ServerStatus == SocketStatus.SOCKET_STATUS_CONNECTED)
-                    Disconnect();
+                {
+                    DisconnectRequest();
+                    client.DisableUDPServer();
+                }
             }
 
             SocketErrorCodes error = SocketErrorCodes.SOCKET_INVALID_STATE;
@@ -188,7 +191,10 @@ namespace KnxTunnelSS
             if (client != null)
             {
                 DisconnectRequest();
+                client.DisableUDPServer();
             }
+            if (OnDisconnect != null)
+                OnDisconnect();
         }
 
         public void Send(SimplSharpString data)
@@ -347,8 +353,7 @@ namespace KnxTunnelSS
 
         private void ProcessDisconnectRequest(byte[] datagram)
         {
-            client.DisableUDPServer();
-            DisconnectRequest();
+            Disconnect();
         }
 
         private void ProcessDisconnectResponse(byte[] datagram)
@@ -356,8 +361,7 @@ namespace KnxTunnelSS
             var channelId = datagram[6];
             if (channelId != ChannelId)
                 return;
-            client.DisableUDPServer();
-            DisconnectRequest();
+            Disconnect();
         }
 
         private void ProcessDatagramHeaders(byte[] datagram)
@@ -440,7 +444,7 @@ namespace KnxTunnelSS
             Pacer.Enqueue(data);
 
             bool bret = data.Equals(prevKnxRx);
-            bret = true;    // never mond duplicates...
+            //bret = true;    // never mind duplicates...
             if (bret)
             {
                 if (OnRx != null)
@@ -612,7 +616,6 @@ namespace KnxTunnelSS
             try
             {
                 client.SendData(datagram, datagram.Length, remoteEndpoint);
-                client.DisableUDPServer();
             }
             catch (Exception e)
             {
@@ -799,9 +802,9 @@ namespace KnxTunnelSS
         {
             // 4 times???
             client.SendData(datagram, datagram.Length, remoteEndpoint);
-            client.SendData(datagram, datagram.Length, remoteEndpoint);
-            client.SendData(datagram, datagram.Length, remoteEndpoint);
-            client.SendData(datagram, datagram.Length, remoteEndpoint);
+            //client.SendData(datagram, datagram.Length, remoteEndpoint);
+            //client.SendData(datagram, datagram.Length, remoteEndpoint);
+            //client.SendData(datagram, datagram.Length, remoteEndpoint);
         }
     }
 }
