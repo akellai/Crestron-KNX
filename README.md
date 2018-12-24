@@ -1,8 +1,8 @@
 Crestron SIMPL# module to work natively with KNX IP Tunneling protocol
 This allows working directly with generic IP KNX routers
 
-Basic idea is to convert EIB telegram to string like "1/2/3:1:00" and send it to Crestron
-Data from crestron is in the same format and is sent to the router
+The idea is to convert EIB telegrams to strings in a text format like "1/2/3:1:00" and vuise versa.
+
 some random comments:
 - Reconnect logic is not implemeted in the module. It's easy to add with an oscillator (enabled as soon as 'Not Connected' signal goes high)
 - Handling of 6 bit type differs from the original Knxlib.NET as I wanted to directly control the type of the telegram sent. Sorry for a misleading data lenght returned: 1 for 6 bit; 2 for 1 byte, 3 for 2 bytes etc
