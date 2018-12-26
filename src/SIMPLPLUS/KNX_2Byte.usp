@@ -44,7 +44,7 @@ Comments:
 *******************************************************************************************/
 DIGITAL_INPUT	_SKIP_;			DIGITAL_OUTPUT	_SKIP_;
 DIGITAL_INPUT	_SKIP_;			DIGITAL_OUTPUT	_SKIP_;
-STRING_INPUT 	FromRX$[32];	ANALOG_OUTPUT Val_FB;
+STRING_INPUT 	FromRX$[64];	ANALOG_OUTPUT Val_FB;
 DIGITAL_INPUT	_SKIP_;			ANALOG_OUTPUT Signed_Analog_Value;
 
 /*******************************************************************************************
@@ -72,64 +72,60 @@ SIGNED_INTEGER_PARAMETER Mantissa;
 STRING Prefix[12];
 INTEGER PrefixLen;
 
-integer VZ, Exp, Man, C, S;
-long_integer lout;
-signed_integer siout;
-
 function getVal(integer Value_2Byte)
 {
-VZ = Value_2Byte >> 15;           // plus/minus sign
-Exp = (Value_2Byte >> 11) & 0x0F; // exponent
-Man = Value_2Byte & 0x7FF;        // mantissa
-if (VZ)	
+	integer VZ, Exp, Man, C, S;
+	long_integer lout;
+	signed_integer siout;
+
+
+	VZ = Value_2Byte >> 15;           // plus/minus sign
+	Exp = (Value_2Byte >> 11) & 0x0F; // exponent
+	Man = Value_2Byte & 0x7FF;        // mantissa
+	if (VZ)	
 	{
-	Man = NOT (Man);		  // 1st complement wenn neg value
-	Man = Man & 0x7FF;
+		Man = NOT (Man);		  // 1st complement wenn neg value
+		Man = Man & 0x7FF;
 	}
 
-Man = Man << Exp; 				// Exp times (<= 15)
+	Man = Man << Exp; 				// Exp times (<= 15)
 
-if (Mantissa = 1)
-{
-  Man = (Man+5)/10;
-}
-if (Mantissa = 0)
-{
-  Man = (Man+49)/100; 
-}
-if (Mantissa >= 2)
-{	
-  Man = Man*10^(Mantissa-2);  
-}
+	if (Mantissa = 1)
+	{
+  		Man = (Man+5)/10;
+	}
+	if (Mantissa = 0)
+	{
+  		Man = (Man+49)/100; 
+	}
+	if (Mantissa >= 2)
+	{	
+  		Man = Man*10^(Mantissa-2);  
+	}
 
-  lout = Man;  
-  //print("%ld\n",lout);
+  	lout = Man;  
+  	//print("%ld\n",lout);
 
-  if(lout > 32767)
-	lout = 32767;
-  if(VZ)
-    siout = lout * (-1);         
-  else
-    siout = lout;
-  Signed_Analog_Value = siout;
+  	if(lout > 32767)
+		lout = 32767;
+  	if(VZ)
+    	siout = lout * (-1);         
+  	else
+    	siout = lout;
+  	Signed_Analog_Value = siout;
 }
 
 CHANGE FromRX$
 {
-	integer pos;
-	string Cmd[32];
+	integer Pos;
 
-	Cmd = FromRX$;
-	if( Cmd = "" )
-		return;
-
-	pos = Find(Prefix,Cmd);
+	pos = Find(Prefix,FromRX$);
 	if(pos = 1)
 	{
-		pos = HexToSI(mid(Cmd,PrefixLen+1,4));
+		pos = HexToSI(mid(FromRX$,PrefixLen+1,4));
 		Val_FB = pos;
 		call getVal(pos);
-	}	
+	}
 }
 
 /*******************************************************************************************

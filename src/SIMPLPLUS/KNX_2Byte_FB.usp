@@ -27,7 +27,7 @@ Comments:
 // #HELP_PDF_FILE ""
 #DEFAULT_VOLATILE
 #ENABLE_STACK_CHECKING
-//#ENABLE_TRACE
+#ENABLE_TRACE
 // #ENCODING_ASCII
 // #ENCODING_UTF16
 // #ENCODING_INHERIT_FROM_PARENT
@@ -42,9 +42,11 @@ Comments:
   DIGITAL, ANALOG and SERIAL INPUTS and OUTPUTS
   (Uncomment and declare inputs and outputs as needed)
 *******************************************************************************************/
-DIGITAL_INPUT	_SKIP_;			DIGITAL_OUTPUT	_SKIP_;
-STRING_INPUT 	FromRX$[64];	DIGITAL_OUTPUT On_FB;
-DIGITAL_INPUT	_SKIP_;			DIGITAL_OUTPUT Off_FB;
+								DIGITAL_OUTPUT	_SKIP_;
+								DIGITAL_OUTPUT	_SKIP_;
+								ANALOG_OUTPUT 	Signed_Analog_Value[200,1];
+STRING_INPUT 	FROM_TX$[64];	//DIGITAL_OUTPUT	_SKIP_;
+//DIGITAL_INPUT	_SKIP_;
 
 /*******************************************************************************************
   Parameters
@@ -54,7 +56,9 @@ DIGITAL_INPUT	_SKIP_;			DIGITAL_OUTPUT Off_FB;
 // SIGNED_INTEGER_PARAMETER
 // LONG_INTEGER_PARAMETER
 // SIGNED_LONG_INTEGER_PARAMETER
-STRING_PARAMETER GroupAddress[9];
+SIGNED_INTEGER_PARAMETER _SKIP_;
+SIGNED_INTEGER_PARAMETER Mantissa;
+STRING_PARAMETER GroupAddress[200,1][9];
 
 /*******************************************************************************************
   Parameter Properties
@@ -63,21 +67,77 @@ STRING_PARAMETER GroupAddress[9];
 #BEGIN_PARAMETER_PROPERTIES GroupAddress
    propDefaultValue="";
 #END_PARAMETER_PROPERTIES
+#BEGIN_PARAMETER_PROPERTIES Mantissa
+   propDefaultValue=1d;
+#END_PARAMETER_PROPERTIES
 
-STRING Prefix[12];
-INTEGER PrefixLen;
+STRING Prefix[200][12];
+INTEGER PrefixLen[200];
 
-CHANGE FromRX$
+INTEGER NumInputs;
+
+signed_integer_function getVal(integer Value_2Byte)
 {
-	INTEGER pos;
+	integer VZ, Exp, Man, C, S;
+	long_integer lout;
+	signed_integer siout;
 
-	pos = Find(Prefix,FromRX$);
-	if(pos = 1)
+
+	VZ = Value_2Byte >> 15;           // plus/minus sign
+	Exp = (Value_2Byte >> 11) & 0x0F; // exponent
+	Man = Value_2Byte & 0x7FF;        // mantissa
+	if (VZ)	
 	{
-		pos = atoi(mid(FromRX$,PrefixLen+1,2));
-		On_FB = pos;
-		Off_FB = !pos;
-	}	
+		Man = NOT (Man);		  // 1st complement wenn neg value
+		Man = Man & 0x7FF;
+	}
+
+	Man = Man << Exp; 				// Exp times (<= 15)
+	if (Mantissa = 1)
+	{
+		Man = (Man+5)/10;
+	}
+	if (Mantissa = 0)
+	{
+  		Man = (Man+49)/100; 
+	}
+	if (Mantissa >= 2)
+	{	
+  		Man = Man*10^(Mantissa-2);  
+	}
+
+  	lout = Man;  
+  	//print("%ld\n",lout);
+
+  	if(lout > 32767)
+		lout = 32767;
+  	if(VZ)
+    	siout = lout * (-1);         
+  	else
+    	siout = lout;
+
+  	return(siout);
+}
+
+CHANGE FROM_TX$
+{
+	integer Pos, i;
+	if( len(FROM_TX$)<2 )
+	return;
+
+	for( i=1 to NumInputs step 1 )
+	{	
+		if( PrefixLen[i] > 0 )
+		{
+			pos = Find(Prefix[i],FROM_TX$);
+			if(pos = 1)
+			{
+				pos = HexToSI(mid(FROM_TX$,PrefixLen[i]+1,4));	
+				Signed_Analog_Value[i] = getVal(pos);
+				break;
+			}
+		}
+	}
 }
 
 /*******************************************************************************************
@@ -89,9 +149,24 @@ Function Main()
 {
     // TODO:  Add code here
     // Initialize declared global and local variables/arrays as needed.
+	integer i;
+
+	for(NumInputs = 200 to 1 Step -1)
+		if(IsSignalDefined(Signed_Analog_Value[NumInputs]))
+			Break;
 
     WaitForInitializationComplete();
-	Prefix = GroupAddress + ":1:";
-	PrefixLen = len(Prefix);
+	for(i = 1 to NumInputs Step 1)
+	{
+		if( GroupAddress[i] <> "" )
+		{
+			Prefix[i] = GroupAddress[i] + ":3:";
+			PrefixLen[i] = len(Prefix[i]);
+		}
+		else
+		{
+			PrefixLen[i] = 0;
+		}
+	}
 }
 

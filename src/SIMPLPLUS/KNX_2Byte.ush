@@ -83,6 +83,7 @@
   SymJam=NonExclusive
   FileName=KNX_2Byte.ush
   SIMPLPlusModuleEncoding=0
+  clz1=KnxTunnelSS
 [END]
 [BEGIN]
   ObjTp=Dp

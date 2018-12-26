@@ -23,7 +23,7 @@
   SmplCName=KNX_1Byte.usp
   Code=1
   SysRev5=4.000
-  SMWRev=3.00.00
+  SMWRev=2.02.05
   InputCue1=[~UNUSED~]
   InputSigType1=Digital
   InputCue2=[~UNUSED~]

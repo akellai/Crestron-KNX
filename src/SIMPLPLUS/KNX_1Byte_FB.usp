@@ -43,7 +43,7 @@ Comments:
   (Uncomment and declare inputs and outputs as needed)
 *******************************************************************************************/
 DIGITAL_INPUT	_SKIP_;			DIGITAL_OUTPUT	_SKIP_;
-STRING_INPUT 	FromRX$[32];	STRING_OUTPUT To_KNX_TX$;
+STRING_INPUT 	FromRX$[64];	STRING_OUTPUT To_KNX_TX$;
 ANALOG_INPUT 	Val_tp;			ANALOG_OUTPUT Val_fb;
 
 /*******************************************************************************************
@@ -69,17 +69,12 @@ INTEGER PrefixLen;
 
 CHANGE FromRX$
 {
-	integer pos;
-	string Cmd[32];
+	INTEGER pos;
 
-	Cmd = FromRX$;
-	if( Cmd = "" )
-		return;
-
-	pos = Find(Prefix,Cmd);
+	pos = Find(Prefix,FromRX$);
 	if(pos = 1)
 	{
-		pos = HexToSI(mid(Cmd,PrefixLen+1,2));
+		pos = HexToSI(mid(FromRX$,PrefixLen+1,2));
 		Val_fb = pos;
 	}	
 }
