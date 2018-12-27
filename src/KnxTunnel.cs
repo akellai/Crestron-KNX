@@ -428,11 +428,8 @@ namespace KnxTunnelSS
             string data = string.Empty;
             if (datagram.data_length == 1)
             {
-//                if (0 == (datagram.apdu[1] & 0x7F)) // 7F is a bad idea b/c of reqd requests ADPU = 0x40!!!
-                if (0 == (datagram.apdu[1] & 0x3F)) // 7F is a bad idea b/c of READ requests ADPU = 0x40!!!
-                    data = "00";
-                else
-                    data = "01";
+                int bitval = datagram.apdu[1] & 0x3F;
+                data = bitval.ToString("X2");
             }
             else
             {
