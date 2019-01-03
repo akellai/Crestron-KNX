@@ -9,7 +9,7 @@ The ability to send read request is also added
 - the received values are in the same format
 - to send a read request for 1/2/3, send the following serial value: "1/2/3;"
 - you can send multiple values in one serial, but keep in mind these will be sent with 50 msec interval: "1/2/3:1:01;1/2/4:2:FF;"
-- do not forget to add the ; symbol as it used as a separator
+- do not forget to add the ; symbol as it is used as a separator
 
 some random comments:
 - Reconnect logic is not implemented in the module. It's easy to add with an oscillator (enabled as soon as 'Not Connected' signal goes high)
