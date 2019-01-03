@@ -5,7 +5,7 @@ The idea is to convert EIB telegrams to strings in a text format like "1/2/3:1:0
 The ability to send read request is also added
 - to send a bit value (switch on) - send the following serial value to the TX$: "1/2/3:1:01;"
 - to send a byte value (dimming) - send the following serial value to the TX$: "1/2/4:2:FF;"
-- to send a 2 byte value (temperature value, 30C) - send the following serial value to the TX$: "1/2/4:2:1977;"
+- to send a 2 byte value (temperature value, 30C) - send the following serial value to the TX$: "1/2/4:3:1977;"
 - the received values are in the same format
 - to send a read request for 1/2/3, send the following serial value: "1/2/3;"
 - you can send multiple values in one serial, but keep in mind these will be sent with 50 msec interval: "1/2/3:1:01;1/2/4:2:FF;"
