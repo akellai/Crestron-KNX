@@ -21,7 +21,7 @@
   SmplCName=KNX_Splitter.usp
   Code=1
   SysRev5=4.000
-  SMWRev=3.00.00
+  SMWRev=2.02.05
   InputList2Cue1=[~UNUSED~]
   InputList2SigType1=Serial
   InputList2Cue2=[~UNUSED~]
@@ -38,7 +38,7 @@
   InputList2SigType7=Serial
   InputList2Cue8=[~UNUSED~]
   InputList2SigType8=Serial
-  InputList2Cue9=TX$
+  InputList2Cue9=FROM_RX$
   InputList2SigType9=Serial
   OutputList2Cue1=KNX_RX1$
   OutputList2SigType1=Serial
@@ -56,7 +56,7 @@
   OutputList2SigType7=Serial
   OutputList2Cue8=KNX_RX8$
   OutputList2SigType8=Serial
-  OutputList2Cue9=RX$
+  OutputList2Cue9=FILTERED_RX$
   OutputList2SigType9=Serial
   ParamCue1=[Reference Name]
   ParamCue2=G1
@@ -119,7 +119,6 @@
   SymJam=NonExclusive
   FileName=KNX_Splitter.ush
   SIMPLPlusModuleEncoding=0
-  clz1=KnxTunnelSS
 [END]
 [BEGIN]
   ObjTp=Dp

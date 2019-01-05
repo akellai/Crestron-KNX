@@ -41,27 +41,27 @@ Comments:
 STRING_INPUT	_SKIP_;			STRING_OUTPUT	KNX_1bit_RX$;
 STRING_INPUT	_SKIP_;			STRING_OUTPUT	KNX_1Byte_RX$;
 STRING_INPUT	_SKIP_;			STRING_OUTPUT	KNX_2Byte_RX$;
-STRING_INPUT	TX$[64];		STRING_OUTPUT	RX$;
+STRING_INPUT	FROM_RX$[64];		STRING_OUTPUT	FILTERED_RX$;
 
-change TX$
+change FROM_RX$
 {
-	if( len(TX$)<10 )
+	if( len(FROM_RX$)<10 )
 		return;
 
-	if( Find(":1:",TX$) > 0 )	
+	if( Find(":1:",FROM_RX$) > 0 )	
 	{
-		KNX_1bit_RX$ = TX$;
+		KNX_1bit_RX$ = FROM_RX$;
 	}
-	else if( Find(":2:",TX$) > 0 )
+	else if( Find(":2:",FROM_RX$) > 0 )
 	{
-		KNX_1Byte_RX$ = TX$;
+		KNX_1Byte_RX$ = FROM_RX$;
 	}
-	else if( Find(":3:",TX$) > 0 )
+	else if( Find(":3:",FROM_RX$) > 0 )
 	{
-		KNX_2Byte_RX$ = TX$;
+		KNX_2Byte_RX$ = FROM_RX$;
 	}
 	else
-		RX$ = TX$;
+		FILTERED_RX$ = FROM_RX$;
 }
 
 Function Main()

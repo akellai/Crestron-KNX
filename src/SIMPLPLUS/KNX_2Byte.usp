@@ -44,7 +44,7 @@ Comments:
 *******************************************************************************************/
 DIGITAL_INPUT	_SKIP_;			DIGITAL_OUTPUT	_SKIP_;
 DIGITAL_INPUT	_SKIP_;			DIGITAL_OUTPUT	_SKIP_;
-STRING_INPUT 	FromRX$[64];	ANALOG_OUTPUT Val_FB;
+STRING_INPUT 	FROM_RX$[64];	ANALOG_OUTPUT Val_FB;
 DIGITAL_INPUT	_SKIP_;			ANALOG_OUTPUT Signed_Analog_Value;
 
 /*******************************************************************************************
@@ -115,14 +115,14 @@ function getVal(integer Value_2Byte)
   	Signed_Analog_Value = siout;
 }
 
-CHANGE FromRX$
+CHANGE FROM_RX$
 {
 	integer Pos;
 
-	pos = Find(Prefix,FromRX$);
+	pos = Find(Prefix,FROM_RX$);
 	if(pos = 1)
 	{
-		pos = HexToSI(mid(FromRX$,PrefixLen+1,4));
+		pos = HexToSI(mid(FROM_RX$,PrefixLen+1,4));
 		Val_FB = pos;
 		call getVal(pos);
 	}

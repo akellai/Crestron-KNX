@@ -28,13 +28,13 @@
   InputSigType1=Digital
   OutputCue1=[~UNUSED~]
   OutputSigType1=Digital
-  InputList2Cue1=FromRX$
+  InputList2Cue1=FROM_RX$
   InputList2SigType1=Serial
-  InputList2Cue2=Val_tp
+  InputList2Cue2=Analog_Value_tp
   InputList2SigType2=Analog
-  OutputList2Cue1=To_KNX_TX$
+  OutputList2Cue1=TO_TX$
   OutputList2SigType1=Serial
-  OutputList2Cue2=Val_fb
+  OutputList2Cue2=Analog_Value_fb
   OutputList2SigType2=Analog
   ParamCue1=[Reference Name]
   ParamCue2=GroupAddress
@@ -76,7 +76,6 @@
   SymJam=NonExclusive
   FileName=KNX_1Byte_FB.ush
   SIMPLPlusModuleEncoding=0
-  clz1=KnxTunnelSS
 [END]
 [BEGIN]
   ObjTp=Dp

@@ -38,7 +38,7 @@ Comments:
 #HELP_END
 */
 
-STRING_INPUT	FROM_TX$[64];		STRING_OUTPUT TX$;
+STRING_INPUT	FROM_RX$[64];		STRING_OUTPUT FILTERED_RX$;
 STRING_PARAMETER _SKIP_;			DIGITAL_OUTPUT _SKIP_;
 STRING_PARAMETER Group[200,1][32];	DIGITAL_OUTPUT out_fb[200,1];
 
@@ -48,17 +48,20 @@ STRING_PARAMETER Group[200,1][32];	DIGITAL_OUTPUT out_fb[200,1];
 
 INTEGER NumInputs;
 
-change FROM_TX$
+change FROM_RX$
 {
 	integer i;
-	if( len(FROM_TX$)<2 )
+	string Slocal[64];
+
+	Slocal = FROM_RX$;
+	if( len(Slocal)<1 )
 	return;
 
 	for( i=1 to NumInputs step 1 )
 	{	
 		if( Group[i] <> "" )
 		{
-			if(Find(Group[i],FROM_TX$) = 1)
+			if(Find(Group[i],Slocal) = 1)
 			{
 				out_fb[i] = 1;
 				if( i%2 = 0 )
@@ -69,15 +72,15 @@ change FROM_TX$
 			}
 		}
 	}
-	TX$ = FROM_TX$;
+	FILTERED_RX$ = Slocal;
 }
 
 Function Main()
 {
+	WaitForInitializationComplete();
+
 	for(NumInputs = 200 to 1 Step -1)
 		if(IsSignalDefined(out_fb[NumInputs]))
 			Break;
-
-	WaitForInitializationComplete();
 }
 

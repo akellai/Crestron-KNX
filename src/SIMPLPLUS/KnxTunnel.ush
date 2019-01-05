@@ -20,7 +20,7 @@
   Name=KnxTunnel
   SmplCName=KnxTunnel.usp
   Code=1
-  SysRev5=4.006
+  SysRev5=4.000
   SMWRev=3.00.00
   InputCue1=[~UNUSED~]
   InputSigType1=Digital
