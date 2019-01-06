@@ -45,7 +45,7 @@ Comments:
 								DIGITAL_OUTPUT	_SKIP_;
 								DIGITAL_OUTPUT	_SKIP_;
 								ANALOG_OUTPUT 	Signed_Analog_Value[200,1];
-STRING_INPUT 	FROM_TX$[64];	//DIGITAL_OUTPUT	_SKIP_;
+STRING_INPUT 	FROM_RX$[64];	//DIGITAL_OUTPUT	_SKIP_;
 //DIGITAL_INPUT	_SKIP_;
 
 /*******************************************************************************************
@@ -119,20 +119,22 @@ signed_integer_function getVal(integer Value_2Byte)
   	return(siout);
 }
 
-CHANGE FROM_TX$
+CHANGE FROM_RX$
 {
 	integer Pos, i;
-	if( len(FROM_TX$)<2 )
+	if( len(FROM_RX$)<2 )
 	return;
 
 	for( i=1 to NumInputs step 1 )
 	{	
 		if( PrefixLen[i] > 0 )
 		{
-			pos = Find(Prefix[i],FROM_TX$);
+			if( len(FROM_RX$) < PrefixLen[i]+4 )
+				continue;
+			pos = Find(Prefix[i],FROM_RX$);
 			if(pos = 1)
 			{
-				pos = HexToSI(mid(FROM_TX$,PrefixLen[i]+1,4));	
+				pos = HexToSI(mid(FROM_RX$,PrefixLen[i]+1,4));	
 				Signed_Analog_Value[i] = getVal(pos);
 				break;
 			}

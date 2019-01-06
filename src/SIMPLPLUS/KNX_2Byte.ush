@@ -34,7 +34,7 @@
   OutputSigType1=Digital
   OutputCue2=[~UNUSED~]
   OutputSigType2=Digital
-  InputList2Cue1=FromRX$
+  InputList2Cue1=FROM_RX$
   InputList2SigType1=Serial
   OutputList2Cue1=Val_FB
   OutputList2SigType1=Analog
@@ -83,7 +83,6 @@
   SymJam=NonExclusive
   FileName=KNX_2Byte.ush
   SIMPLPlusModuleEncoding=0
-  clz1=KnxTunnelSS
 [END]
 [BEGIN]
   ObjTp=Dp

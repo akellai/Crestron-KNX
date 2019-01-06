@@ -43,9 +43,10 @@ Comments:
   (Uncomment and declare inputs and outputs as needed)
 *******************************************************************************************/
 DIGITAL_INPUT	_SKIP_;			DIGITAL_OUTPUT	_SKIP_;
-STRING_INPUT 	FromRX$[64];	ANALOG_OUTPUT Val_FB;
+STRING_INPUT 	FROM_RX$[64];	ANALOG_OUTPUT Val_FB;
 DIGITAL_INPUT	_SKIP_;			DIGITAL_OUTPUT On_FB;
 DIGITAL_INPUT	_SKIP_;			DIGITAL_OUTPUT Off_FB;
+								STRING_OUTPUT TextVal_FB;
 
 /*******************************************************************************************
   Parameters
@@ -68,17 +69,19 @@ STRING_PARAMETER GroupAddress[9];
 STRING Prefix[12];
 INTEGER PrefixLen;
 
-CHANGE FromRX$
+CHANGE FROM_RX$
 {
 	INTEGER pos;
 
-	pos = Find(Prefix,FromRX$);
+	pos = Find(Prefix,FROM_RX$);
 	if(pos = 1)
 	{
-		pos = HexToSI(mid(FromRX$,PrefixLen+1,2));
+		pos = HexToSI(mid(FROM_RX$,PrefixLen+1,2));
 		On_FB = pos;
 		Off_FB = !pos;
 		Val_FB = pos;
+		pos = pos*100/255;
+		TextVal_FB = itoa(pos) + "%";
 	}	
 }
 

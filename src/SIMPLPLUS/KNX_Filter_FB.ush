@@ -21,14 +21,14 @@
   SmplCName=KNX_Filter_FB.usp
   Code=1
   SysRev5=4.000
-  SMWRev=3.00.00
+  SMWRev=2.02.05
   OutputCue1=[~UNUSED~]
   OutputSigType1=Digital
   OutputCue2=out_fb[#]
   OutputSigType2=Digital
-  InputList2Cue1=FROM_TX$
+  InputList2Cue1=FROM_RX$
   InputList2SigType1=Serial
-  OutputList2Cue1=TX$
+  OutputList2Cue1=FILTERED_RX$
   OutputList2SigType1=Serial
   ParamCue1=[Reference Name]
   ParamCue2=[~UNUSED~]

@@ -20,15 +20,15 @@
   Name=KNX_TypeSplitter
   SmplCName=KNX_TypeSplitter.usp
   Code=1
-  SysRev5=4.006
-  SMWRev=3.00.00
+  SysRev5=3.090
+  SMWRev=2.02.05
   InputList2Cue1=[~UNUSED~]
   InputList2SigType1=Serial
   InputList2Cue2=[~UNUSED~]
   InputList2SigType2=Serial
   InputList2Cue3=[~UNUSED~]
   InputList2SigType3=Serial
-  InputList2Cue4=TX$
+  InputList2Cue4=FROM_RX$
   InputList2SigType4=Serial
   OutputList2Cue1=KNX_1bit_RX$
   OutputList2SigType1=Serial
@@ -36,7 +36,7 @@
   OutputList2SigType2=Serial
   OutputList2Cue3=KNX_2Byte_RX$
   OutputList2SigType3=Serial
-  OutputList2Cue4=RX$
+  OutputList2Cue4=FILTERED_RX$
   OutputList2SigType4=Serial
   ParamCue1=[Reference Name]
   MinVariableInputs=0
@@ -75,7 +75,6 @@
   SymJam=NonExclusive
   FileName=KNX_TypeSplitter.ush
   SIMPLPlusModuleEncoding=0
-  clz1=KnxTunnelSS
 [END]
 [BEGIN]
   ObjTp=Dp

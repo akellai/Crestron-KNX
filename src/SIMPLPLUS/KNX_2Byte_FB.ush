@@ -28,7 +28,7 @@
   OutputSigType1=Digital
   OutputCue2=[~UNUSED~]
   OutputSigType2=Digital
-  InputList2Cue1=FROM_TX$
+  InputList2Cue1=FROM_RX$
   InputList2SigType1=Serial
   OutputList2Cue1=Signed_Analog_Value[#]
   OutputList2SigType1=Analog

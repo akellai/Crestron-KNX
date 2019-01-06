@@ -34,7 +34,7 @@
   OutputSigType2=Digital
   OutputCue3=Off_FB
   OutputSigType3=Digital
-  InputList2Cue1=FromRX$
+  InputList2Cue1=FROM_RX$
   InputList2SigType1=Serial
   ParamCue1=[Reference Name]
   ParamCue2=GroupAddress

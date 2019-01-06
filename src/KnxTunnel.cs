@@ -122,6 +122,15 @@ namespace KnxTunnelSS
                     Logger.Log("MySendItem before Action: {0}:{1}:{2}", GA, len, val.Length );
                     Action(GA, len==1, val);
                 }
+                else if (sitems.Length == 1)
+                {
+                    string GA = sitems[0];
+                    Logger.Log("MySendItem before read request: {0}", GA);
+                    RequestStatus(GA);
+                }
+                else
+                    Logger.Log("MySendItem invalid item: {0}", data);
+
             }
             catch(System.Exception e)
             {
@@ -664,6 +673,11 @@ namespace KnxTunnelSS
             SendData(CreateActionDatagram(destinationAddress, b_bit, data));
         }
 
+        public void RequestStatus(string destinationAddress)
+        {
+            SendData(CreateRequestStatusDatagram(destinationAddress));
+        }
+
         protected byte[] CreateActionDatagram(string destinationAddress, bool b_bit, byte[] data)
         {
             CMonitor.Enter(_sequenceNumberLock);
@@ -803,6 +817,68 @@ namespace KnxTunnelSS
             //client.SendData(datagram, datagram.Length, remoteEndpoint);
             //client.SendData(datagram, datagram.Length, remoteEndpoint);
             //client.SendData(datagram, datagram.Length, remoteEndpoint);
+        }
+
+        protected byte[] CreateRequestStatusDatagram(string destinationAddress)
+        {
+            CMonitor.Enter(_sequenceNumberLock);
+            try
+            {
+                // HEADER
+                var datagram = new byte[21];
+                datagram[00] = 0x06;
+                datagram[01] = 0x10;
+                datagram[02] = 0x04;
+                datagram[03] = 0x20;
+                datagram[04] = 0x00;
+                datagram[05] = 0x15;
+
+                datagram[06] = 0x04;
+                datagram[07] = ChannelId;
+                datagram[08] = GenerateSequenceNumber();
+                datagram[09] = 0x00;
+
+                return CreateRequestStatusDatagramCommon(destinationAddress, datagram, 10);
+            }
+            catch
+            {
+                RevertSingleSequenceNumber();
+                return null;
+            }
+            finally
+            {
+                CMonitor.Exit(_sequenceNumberLock);
+            }
+        }
+
+        protected byte[] CreateRequestStatusDatagramCommon(string destinationAddress, byte[] datagram, int cemi_start_pos)
+        {
+            var i = 0;
+
+            datagram[cemi_start_pos + i++] =
+                ActionMessageCode != 0x00
+                    ? ActionMessageCode
+                    : (byte)0x11;
+
+            datagram[cemi_start_pos + i++] = 0x00;
+            datagram[cemi_start_pos + i++] = 0xAC;
+
+            datagram[cemi_start_pos + i++] =
+                KnxHelper.IsAddressIndividual(destinationAddress)
+                    ? (byte)0x50
+                    : (byte)0xF0;
+
+            datagram[cemi_start_pos + i++] = 0x00;
+            datagram[cemi_start_pos + i++] = 0x00;
+            byte[] dst_address = KnxHelper.GetAddress(destinationAddress);
+            datagram[cemi_start_pos + i++] = dst_address[0];
+            datagram[cemi_start_pos + i++] = dst_address[1];
+
+            datagram[cemi_start_pos + i++] = 0x01;
+            datagram[cemi_start_pos + i++] = 0x00;
+            datagram[cemi_start_pos + i] = 0x00;
+
+            return datagram;
         }
     }
 }

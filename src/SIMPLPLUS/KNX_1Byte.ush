@@ -36,10 +36,12 @@
   OutputSigType2=Digital
   OutputCue3=Off_FB
   OutputSigType3=Digital
-  InputList2Cue1=FromRX$
+  InputList2Cue1=FROM_RX$
   InputList2SigType1=Serial
   OutputList2Cue1=Val_FB
   OutputList2SigType1=Analog
+  OutputList2Cue2=TextVal_FB
+  OutputList2SigType2=Serial
   ParamCue1=[Reference Name]
   ParamCue2=GroupAddress
   ParamSigType2=String
@@ -49,8 +51,8 @@
   MaxVariableInputsList2=1
   MinVariableOutputs=3
   MaxVariableOutputs=3
-  MinVariableOutputsList2=1
-  MaxVariableOutputsList2=1
+  MinVariableOutputsList2=2
+  MaxVariableOutputsList2=2
   MinVariableParams=1
   MaxVariableParams=1
   Expand=expand_separately

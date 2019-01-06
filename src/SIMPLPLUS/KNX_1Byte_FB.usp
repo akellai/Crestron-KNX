@@ -42,9 +42,9 @@ Comments:
   DIGITAL, ANALOG and SERIAL INPUTS and OUTPUTS
   (Uncomment and declare inputs and outputs as needed)
 *******************************************************************************************/
-DIGITAL_INPUT	_SKIP_;			DIGITAL_OUTPUT	_SKIP_;
-STRING_INPUT 	FromRX$[64];	STRING_OUTPUT To_KNX_TX$;
-ANALOG_INPUT 	Val_tp;			ANALOG_OUTPUT Val_fb;
+DIGITAL_INPUT	_SKIP_;					DIGITAL_OUTPUT	_SKIP_;
+STRING_INPUT 	FROM_RX$[64];			STRING_OUTPUT TO_TX$;
+ANALOG_INPUT 	Analog_Value_tp;		ANALOG_OUTPUT Analog_Value_fb;
 
 /*******************************************************************************************
   Parameters
@@ -67,21 +67,24 @@ STRING_PARAMETER GroupAddress[9];
 STRING Prefix[12];
 INTEGER PrefixLen;
 
-CHANGE FromRX$
+CHANGE FROM_RX$
 {
 	INTEGER pos;
+    
+	if( len(FROM_RX$)<PrefixLen+2 )
+		return;
 
-	pos = Find(Prefix,FromRX$);
+	pos = Find(Prefix,FROM_RX$);
 	if(pos = 1)
 	{
-		pos = HexToSI(mid(FromRX$,PrefixLen+1,2));
-		Val_fb = pos;
+		pos = HexToSI(mid(FROM_RX$,PrefixLen+1,2));
+		Analog_Value_fb = pos;
 	}	
 }
 
-CHANGE Val_tp
+CHANGE Analog_Value_tp
 {
-	makestring(To_KNX_TX$,"%s%02X;",Prefix,Val_tp);
+	makestring(TO_TX$,"%s%02X;", Prefix, Analog_Value_tp);
 }
 
 /*******************************************************************************************
