@@ -46,7 +46,7 @@ STRING_INPUT	_SKIP_;			STRING_OUTPUT	KNX_RX5$;
 STRING_INPUT	_SKIP_;			STRING_OUTPUT	KNX_RX6$;
 STRING_INPUT	_SKIP_;			STRING_OUTPUT	KNX_RX7$;
 STRING_INPUT	_SKIP_;			STRING_OUTPUT	KNX_RX8$;
-STRING_INPUT	FROM_RX$[64];		STRING_OUTPUT	FILTERED_RX$;
+STRING_INPUT	FROM_RX$[64];		STRING_OUTPUT	TX$;
 
 STRING_PARAMETER G1[12];
 STRING_PARAMETER G2[12];
@@ -90,75 +90,78 @@ STRING_PARAMETER G8[12];
 #END_PARAMETER_PROPERTIES
 
 change FROM_RX$
-{	
-	if( len(FROM_RX$)<2 )
+{
+	STRING from_rx[64];
+	from_rx = FROM_RX$;
+
+	if( len(from_rx)<2 )
 		return;
 
 	if( G1 <> "" )
 	{
-		if(Find(G1,FROM_RX$) = 1)
+		if(Find(G1,from_rx) = 1)
 		{
-			KNX_RX1$ = FROM_RX$;
+			KNX_RX1$ = from_rx;
 			return;
 		}
 	}
 	if( G2 <> "" )
 	{
-		if(Find(G2,FROM_RX$) = 1)
+		if(Find(G2,from_rx) = 1)
 		{
-			KNX_RX2$ = FROM_RX$;
+			KNX_RX2$ = from_rx;
 			return;
 		}
 	}
 	if( G3 <> "" )
 	{
-		if(Find(G3,FROM_RX$) = 1)
+		if(Find(G3,from_rx) = 1)
 		{
-			KNX_RX3$ = FROM_RX$;
+			KNX_RX3$ = from_rx;
 			return;
 		}
 	}
 	if( G4 <> "" )
 	{
-		if(Find(G4,FROM_RX$) = 1)
+		if(Find(G4,from_rx) = 1)
 		{
-			KNX_RX4$ = FROM_RX$;
+			KNX_RX4$ = from_rx;
 			return;
 		}
 	}
 	if( G5 <> "" )
 	{
-		if(Find(G5,FROM_RX$) = 1)
+		if(Find(G5,from_rx) = 1)
 		{
-			KNX_RX5$ = FROM_RX$;
+			KNX_RX5$ = from_rx;
 			return;
 		}
 	}
 	if( G6 <> "" )
 	{
-		if(Find(G6,FROM_RX$) = 1)
+		if(Find(G6,from_rx) = 1)
 		{
-			KNX_RX6$ = FROM_RX$;
+			KNX_RX6$ = from_rx;
 			return;
 		}
 	}
 	if( G7 <> "" )
 	{
-		if(Find(G7,FROM_RX$) = 1)
+		if(Find(G7,from_rx) = 1)
 		{
-			KNX_RX7$ = FROM_RX$;
+			KNX_RX7$ = from_rx;
 			return;
 		}
 	}
 	if( G8 <> "" )
 	{
-		if(Find(G8,FROM_RX$) = 1)
+		if(Find(G8,from_rx) = 1)
 		{
-			KNX_RX8$ = FROM_RX$;
+			KNX_RX8$ = from_rx;
 			return;
 		}
 	}
-	FILTERED_RX$ = FROM_RX$;
+	TX$ = from_rx;
 }
 
 Function Main()

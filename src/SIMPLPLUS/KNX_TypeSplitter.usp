@@ -38,30 +38,33 @@ Comments:
 #HELP_END
 */
 
-STRING_INPUT	_SKIP_;			STRING_OUTPUT	KNX_1bit_RX$;
-STRING_INPUT	_SKIP_;			STRING_OUTPUT	KNX_1Byte_RX$;
-STRING_INPUT	_SKIP_;			STRING_OUTPUT	KNX_2Byte_RX$;
-STRING_INPUT	FROM_RX$[64];		STRING_OUTPUT	FILTERED_RX$;
+STRING_INPUT	_SKIP_;			STRING_OUTPUT	KNX_1bit_TX$;
+STRING_INPUT	_SKIP_;			STRING_OUTPUT	KNX_1Byte_TX$;
+STRING_INPUT	_SKIP_;			STRING_OUTPUT	KNX_2Byte_TX$;
+STRING_INPUT	FROM_RX$[64];		STRING_OUTPUT	TX$;
 
 change FROM_RX$
 {
-	if( len(FROM_RX$)<10 )
+	STRING from_rx[64];
+	from_rx = FROM_RX$;
+
+	if( len(from_rx)<10 )
 		return;
 
-	if( Find(":1:",FROM_RX$) > 0 )	
+	if( Find(":1:",from_rx) > 0 )	
 	{
-		KNX_1bit_RX$ = FROM_RX$;
+		KNX_1bit_TX$ = from_rx;
 	}
-	else if( Find(":2:",FROM_RX$) > 0 )
+	else if( Find(":2:",from_rx) > 0 )
 	{
-		KNX_1Byte_RX$ = FROM_RX$;
+		KNX_1Byte_TX$ = from_rx;
 	}
-	else if( Find(":3:",FROM_RX$) > 0 )
+	else if( Find(":3:",from_rx) > 0 )
 	{
-		KNX_2Byte_RX$ = FROM_RX$;
+		KNX_2Byte_TX$ = from_rx;
 	}
 	else
-		FILTERED_RX$ = FROM_RX$;
+		TX$ = from_rx;
 }
 
 Function Main()

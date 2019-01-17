@@ -71,7 +71,7 @@ STRING_PARAMETER GroupAddress[200,1][9];
    propDefaultValue=1d;
 #END_PARAMETER_PROPERTIES
 
-STRING Prefix[200][12];
+STRING Prefix[200][14];
 INTEGER PrefixLen[200];
 
 INTEGER NumInputs;
@@ -122,19 +122,23 @@ signed_integer_function getVal(integer Value_2Byte)
 CHANGE FROM_RX$
 {
 	integer Pos, i;
-	if( len(FROM_RX$)<2 )
+	STRING from_rx[64];
+
+	from_rx = FROM_RX$;
+
+	if( len(from_rx)<2 )
 	return;
 
 	for( i=1 to NumInputs step 1 )
 	{	
 		if( PrefixLen[i] > 0 )
 		{
-			if( len(FROM_RX$) < PrefixLen[i]+4 )
+			if( len(from_rx) < PrefixLen[i]+4 )
 				continue;
-			pos = Find(Prefix[i],FROM_RX$);
+			pos = Find(Prefix[i],from_rx);
 			if(pos = 1)
 			{
-				pos = HexToSI(mid(FROM_RX$,PrefixLen[i]+1,4));	
+				pos = HexToSI(mid(from_rx,PrefixLen[i]+1,4));	
 				Signed_Analog_Value[i] = getVal(pos);
 				break;
 			}

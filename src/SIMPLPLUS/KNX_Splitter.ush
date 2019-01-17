@@ -56,7 +56,7 @@
   OutputList2SigType7=Serial
   OutputList2Cue8=KNX_RX8$
   OutputList2SigType8=Serial
-  OutputList2Cue9=FILTERED_RX$
+  OutputList2Cue9=TX$
   OutputList2SigType9=Serial
   ParamCue1=[Reference Name]
   ParamCue2=G1
@@ -119,6 +119,8 @@
   SymJam=NonExclusive
   FileName=KNX_Splitter.ush
   SIMPLPlusModuleEncoding=0
+  clz1=KnxTunnelSS
+  clz2=SIMPLSharpNetUtils
 [END]
 [BEGIN]
   ObjTp=Dp

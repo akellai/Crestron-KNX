@@ -64,7 +64,7 @@ STRING_PARAMETER GroupAddress[9];
    propDefaultValue="";
 #END_PARAMETER_PROPERTIES
 
-STRING Prefix[12];
+STRING Prefix[14];
 INTEGER PrefixLen;
 
 CHANGE Up_tp

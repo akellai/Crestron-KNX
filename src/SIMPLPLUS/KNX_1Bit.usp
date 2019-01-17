@@ -64,20 +64,23 @@ STRING_PARAMETER GroupAddress[9];
    propDefaultValue="";
 #END_PARAMETER_PROPERTIES
 
-STRING Prefix[12];
+STRING Prefix[14];
 INTEGER PrefixLen;
 
 CHANGE FROM_RX$
 {
 	INTEGER pos;
+	STRING from_rx[64];
 
-	if( len(FROM_RX$) < PrefixLen + 2 )
+	from_rx = FROM_RX$;
+
+	if( len(from_rx) < PrefixLen + 2 )
 		return;
 
-	pos = Find(Prefix,FROM_RX$);
+	pos = Find(Prefix,from_rx);
 	if(pos = 1)
 	{
-		pos = atoi(mid(FROM_RX$,PrefixLen+1,2));
+		pos = atoi(mid(from_rx,PrefixLen+1,2));
 		On_FB = pos;
 		Off_FB = !pos;
 	}	
