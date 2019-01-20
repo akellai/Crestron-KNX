@@ -118,11 +118,13 @@ function getVal(integer Value_2Byte)
 CHANGE FROM_RX$
 {
 	integer Pos;
+	STRING from_rx[64];
+	from_rx = FROM_RX$;
 
-	pos = Find(Prefix,FROM_RX$);
+	pos = Find(Prefix,from_rx);
 	if(pos = 1)
 	{
-		pos = HexToSI(mid(FROM_RX$,PrefixLen+1,4));
+		pos = HexToSI(mid(from_rx,PrefixLen+1,4));
 		Val_FB = pos;
 		call getVal(pos);
 	}

@@ -83,6 +83,7 @@
   FileName=KNX_1Byte.ush
   SIMPLPlusModuleEncoding=0
   clz1=KnxTunnelSS
+  clz2=SIMPLSharpNetUtils
 [END]
 [BEGIN]
   ObjTp=Dp
