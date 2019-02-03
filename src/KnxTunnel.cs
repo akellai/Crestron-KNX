@@ -11,31 +11,33 @@ namespace KnxTunnelSS
         private IPEndPoint localEndpoint;
         private IPEndPoint remoteEndpoint;
         private CTimer requestTimer;
-        private const int stateRequestTimerInterval = 60000;
+        private const int stateRequestTimerInterval = 3000;    // check every 3 seconds - this makes reconnect faster
 
+        private readonly object _sendDatagramLock = new object();
         private readonly object _sequenceNumberLock = new object();
         private byte _sequenceNumber;
         private readonly object _rxSequenceNumberLock = new object();
         private byte _rxSequenceNumber;
+        private byte[] myAddress;
 
         private readonly object keep_alive_lock = new object();
-        private DateTime m_keep_alive_time;
+        private bool m_b_keep_alive = false;
+        private const int buffersz = 1024;
 
+        // allow missing 1 cycle
         public bool Alive
         {
-            get {
-                DateTime dt = DateTime.Now;
-                TimeSpan span = dt - m_keep_alive_time;
-                return ((int)span.TotalMilliseconds) < stateRequestTimerInterval;
+            get
+            {
+                bool bret = m_b_keep_alive;
+                Alive = false;
+                return bret;
             }
             set
             {
-                if (value == true)
-                {
-                    CMonitor.Enter(keep_alive_lock);
-                    m_keep_alive_time = DateTime.Now;
-                    CMonitor.Exit(keep_alive_lock);
-                }
+                CMonitor.Enter(keep_alive_lock);
+                m_b_keep_alive = value;
+                CMonitor.Exit(keep_alive_lock);
             }
         }
 
@@ -45,10 +47,20 @@ namespace KnxTunnelSS
         ///     Some KNX Routers/Interfaces might need this parameter defined, some need this to be 0x29.
         ///     Default: 0x00
         /// </summary>
-        public byte ActionMessageCode { get; set; }
+        private byte ActionMessageCode = 0;
 
         public delegate void ConnectedHandler();
         public ConnectedHandler OnConnect { set; get; }
+
+        public delegate void DisconnectedHandler();
+        public DisconnectedHandler OnDisconnect { set; get; }
+
+        public delegate void RxHandler(SimplSharpString data);
+        public RxHandler OnRx { set; get; }
+
+        public delegate void TxHandler(SimplSharpString data);
+        public RxHandler OnTx { set; get; }
+
 
         internal byte ChannelId { get; set; }
 
@@ -67,12 +79,6 @@ namespace KnxTunnelSS
             _sequenceNumber = 0x00;
         }
 
-        public delegate void DisconnectedHandler();
-        public DisconnectedHandler OnDisconnect { set; get; }
-
-        public delegate void RxHandler(SimplSharpString data);
-        public RxHandler OnRx { set; get; }
-
         public int Debug
         {
             set { Logger.Debug = value; }
@@ -85,13 +91,13 @@ namespace KnxTunnelSS
         /// </summary>
         public KnxTunnel()
         {
-            Pacer = new String_Pacer(64, 50);   // do not send more than 20 signals a sec
-            Pacer.OnChunk = MyChunkHandler;
-            Pacer.OnSendItem = MySendItem;
+            Pacer = new String_Pacer(100);   // do not send/receive more than 10 telegrams/sec
+            Pacer.OnReceive = MyRxHandler;
+            Pacer.OnSend = MyTxHandler;
             requestTimer = new CTimer(StateRequest, Timeout.Infinite);
         }
 
-        internal void MyChunkHandler(string data)
+        internal void MyRxHandler(string data)
         {
             if (OnRx != null)
                 OnRx(new SimplSharpString(data));
@@ -105,7 +111,7 @@ namespace KnxTunnelSS
             return retval;
         }
 
-        internal void MySendItem(string data)
+        internal void MyTxHandler(string data)
         {
             if (string.IsNullOrEmpty(data))
                 return;
@@ -151,9 +157,9 @@ namespace KnxTunnelSS
                 CrestronEthernetHelper.GetAdapterdIdForSpecifiedAdapterType(EthernetAdapterType.EthernetLANAdapter));
         }
 
-        public int Connect(String address, int port, int buffersz)
+        public int Connect(String address, int target_port, int src_port, string myAddress)
         {
-            Logger.Log("Connect({0},{1},{2})", address, port, buffersz);
+            Logger.Log("Connect({0},{1},{2},{3})", address, target_port, src_port, myAddress);
 
             if (client != null)
             {
@@ -161,16 +167,24 @@ namespace KnxTunnelSS
                 {
                     DisconnectRequest();
                     client.DisableUDPServer();
+                    client = null;
                 }
             }
 
             SocketErrorCodes error = SocketErrorCodes.SOCKET_INVALID_STATE;
             try
             {
-                remoteEndpoint = get_IPEndpoint(address, port);
-                localEndpoint = get_IPEndpoint(getLocalIP(), port);
-                client = new UDPServer(remoteEndpoint, port, buffersz, EthernetAdapterType.EthernetLANAdapter);
-                
+                this.myAddress = KnxHelper.GetAddress(myAddress);
+                remoteEndpoint = get_IPEndpoint(address, target_port);
+
+                if( src_port<=0 )
+                    src_port = target_port;
+                localEndpoint = get_IPEndpoint(getLocalIP(), src_port);
+
+                client = new UDPServer(remoteEndpoint, src_port, buffersz, EthernetAdapterType.EthernetLANAdapter);
+
+                InitialParametersClass.ReadInInitialParameters(1);
+
                 error = client.EnableUDPServer();
                 if (error == SocketErrorCodes.SOCKET_OK)
                 {
@@ -199,37 +213,44 @@ namespace KnxTunnelSS
             Logger.Log("Disconnect()");
             if (client != null)
             {
+                requestTimer.Stop();
+                Alive = false;
                 DisconnectRequest();
                 client.DisableUDPServer();
+                Pacer.ClearTx();
+                client = null;
+                if (OnDisconnect != null)
+                    OnDisconnect();
             }
-            if (OnDisconnect != null)
-                OnDisconnect();
         }
 
         public void Send(SimplSharpString data)
         {
             if (client != null)
             {
-                Pacer.AddData(data);
+                Pacer.EnqueueTX(data);
             }
-            Logger.Log("Called Send() on a Null client!");
+            else
+                Logger.Log("Error: Send() to a Null client!");
         }
 
         public void udpReceiver(UDPServer session, int len)
         {
             Logger.Log("udpReceiver");
-            Alive = true;
-            if (len == 0)
+            if (len > 0)
             {
-                Logger.Log("Size triggers Disconnect");
-                if (OnDisconnect != null)
-                    OnDisconnect();
-            }
-            else
-            {
+                Alive = true;
                 byte[] datagram = session.IncomingDataBuffer;
                 ProcessDatagram(datagram);
-                client.ReceiveDataAsync(udpReceiver);
+                // ProcessDatagram could disconnect the client
+                if (client != null)
+                {
+                    SocketErrorCodes err = client.ReceiveDataAsync(udpReceiver);
+                    if (err != SocketErrorCodes.SOCKET_OPERATION_PENDING)
+                    {
+                        ErrorLog.Error("client.ReceiveDataAsync: {0}", err.ToString());
+                    }
+                }
             }
         }
 
@@ -245,14 +266,8 @@ namespace KnxTunnelSS
                     case KnxHelper.SERVICE_TYPE.CONNECTIONSTATE_RESPONSE:
                         ProcessConnectionStateResponse(datagram);
                         break;
-                    case KnxHelper.SERVICE_TYPE.TUNNELLING_ACK:
-                        ProcessTunnelingAck(datagram);
-                        break;
                     case KnxHelper.SERVICE_TYPE.DISCONNECT_REQUEST:
                         ProcessDisconnectRequest(datagram);
-                        break;
-                    case KnxHelper.SERVICE_TYPE.DISCONNECT_RESPONSE:
-                        ProcessDisconnectResponse(datagram);
                         break;
                     case KnxHelper.SERVICE_TYPE.TUNNELLING_REQUEST:
                         ProcessDatagramHeaders(datagram);
@@ -281,20 +296,17 @@ namespace KnxTunnelSS
             if (knxDatagram.channel_id == 0x00 && knxDatagram.status == 0x24)
             {
                 Logger.Log("ProcessConnectResponse: - No more connections available");
+                ErrorLog.Error("ProcessConnectResponse - No more connections available");
+                Disconnect();
             }
             else
             {
                 ChannelId = knxDatagram.channel_id;
                 ResetSequenceNumber();
-                requestTimer.Reset(stateRequestTimerInterval, stateRequestTimerInterval);
+                requestTimer.Reset(stateRequestTimerInterval);
                 if (OnConnect != null)
                     OnConnect();
             }
-        }
-
-        private void ProcessTunnelingAck(byte[] datagram)
-        {
-            // do nothing
         }
 
         private void ProcessConnectionStateResponse(byte[] datagram)
@@ -324,6 +336,7 @@ namespace KnxTunnelSS
             if (!Alive)
             {
                 // nothing recieved since last keep alive
+                ErrorLog.Error("StateRequest: no response to keep alive, disconnecting");
                 Disconnect();
                 return;
             }
@@ -350,26 +363,27 @@ namespace KnxTunnelSS
             datagram[14] = (byte)(localEndpoint.Port >> 8);
             datagram[15] = (byte)localEndpoint.Port;
 
-            try
+            SendDatagram(datagram, datagram.Length);
+            requestTimer.Reset(stateRequestTimerInterval);
+        }
+
+        private SocketErrorCodes SendDatagram(byte[] data, int len)
+        {
+            if (client == null)
+                return SocketErrorCodes.SOCKET_NOT_CONNECTED;
+
+            CMonitor.Enter(_sendDatagramLock);
+            SocketErrorCodes sret = client.SendData(data, len, remoteEndpoint);
+            CMonitor.Exit(_sendDatagramLock);
+            if (sret != SocketErrorCodes.SOCKET_OK)
             {
-                client.SendData(datagram, datagram.Length, remoteEndpoint);
+                ErrorLog.Error("SendDatagram: {0}", sret.ToString());
             }
-            catch (Exception e)
-            {
-                Logger.Log(e.Message);
-            }
+            return sret;
         }
 
         private void ProcessDisconnectRequest(byte[] datagram)
         {
-            Disconnect();
-        }
-
-        private void ProcessDisconnectResponse(byte[] datagram)
-        {
-            var channelId = datagram[6];
-            if (channelId != ChannelId)
-                return;
             Disconnect();
         }
 
@@ -387,28 +401,29 @@ namespace KnxTunnelSS
 
             var channelId = datagram[7];
             if (channelId != ChannelId)
+            {
                 return;
+            }
 
             var sequenceNumber = datagram[8];
-            var process = true;
+//            var process = true;
             
+            // Possibility to miss every 256-s packet
+            // this happens if seq number goes from 255 to 0
+            // it's better to cache last used telegram and not to resend to crestron the same value twice
+            // 
             CMonitor.Enter(_rxSequenceNumberLock);
-            if (sequenceNumber <= _rxSequenceNumber)
-                process = false;
+//            if (sequenceNumber <= _rxSequenceNumber)
+//                process = false;
 
             _rxSequenceNumber = sequenceNumber;
             CMonitor.Exit(_rxSequenceNumberLock);
-
-            if (process)
-            {
-                // TODO: Magic number 10, what is it?
-                var cemi = new byte[datagram.Length - 10];
-                Array.Copy(datagram, 10, cemi, 0, datagram.Length - 10);
-
-                ProcessCEMI(knxDatagram, cemi);
-            }
+            // TODO: Magic number 10, what is it?
+            var cemi = new byte[datagram.Length - 10];
+            Array.Copy(datagram, 10, cemi, 0, datagram.Length - 10);
 
             SendTunnelingAck(sequenceNumber);
+            ProcessCEMI(knxDatagram, cemi);
         }
 
         public void SendTunnelingAck(byte sequenceNumber)
@@ -427,12 +442,10 @@ namespace KnxTunnelSS
             datagram[08] = sequenceNumber;
             datagram[09] = 0x00;
 
-            client.SendData(datagram, datagram.Length,remoteEndpoint);
+            SendDatagram(datagram, datagram.Length);
         }
 
-        private string prevKnxRx = "";
-
-        private bool BuildAndExecuteKnxRx(KnxDatagram datagram)
+        private void BuildAndExecuteKnxRx(KnxDatagram datagram)
         {
             string data = string.Empty;
             if (datagram.data_length == 1)
@@ -446,19 +459,9 @@ namespace KnxTunnelSS
             }
 
             data = datagram.destination_address + ":" +
-                datagram.data_length + ":" + data + ";";
+                datagram.data_length + ":" + data;
 
-            Pacer.Enqueue(data);
-
-            bool bret = data.Equals(prevKnxRx);
-            //bret = true;    // never mind duplicates...
-            if (bret)
-            {
-                if (OnRx != null)
-                    OnRx(new SimplSharpString(data));
-            }
-            prevKnxRx = data;
-            return bret;
+            Pacer.EnqueueRX(data);
         }
 
         protected void ProcessCEMI(KnxDatagram datagram, byte[] cemi)
@@ -620,14 +623,7 @@ namespace KnxTunnelSS
             datagram[15] = (byte)localEndpoint.Port;
 
             requestTimer.Stop();
-            try
-            {
-                client.SendData(datagram, datagram.Length, remoteEndpoint);
-            }
-            catch (Exception e)
-            {
-                Logger.Log("DisconnectRequest: {0}", e.Message);
-            }
+            SendDatagram(datagram, datagram.Length);
         }
 
         private SocketErrorCodes ConnectRequest()
@@ -662,7 +658,7 @@ namespace KnxTunnelSS
             datagram[24] = 0x02;
             datagram[25] = 0x00;
 
-            SocketErrorCodes err = client.SendData(datagram, datagram.Length, remoteEndpoint);
+            SocketErrorCodes err = SendDatagram(datagram, datagram.Length);
             Logger.Log("ConnectRequest {0} {1} {2}", err,
                 remoteEndpoint.Address, remoteEndpoint.Port);
             return err;
@@ -796,8 +792,8 @@ namespace KnxTunnelSS
                     ? (byte)0x50
                     : (byte)0xF0;
 
-            datagram[i++] = 0x00;
-            datagram[i++] = 0x00;
+            datagram[i++] = myAddress[0];   // Source address
+            datagram[i++] = myAddress[1];
             var dst_address = KnxHelper.GetAddress(destinationAddress);
             datagram[i++] = dst_address[0];
             datagram[i++] = dst_address[1];
@@ -813,7 +809,7 @@ namespace KnxTunnelSS
         public void SendData(byte[] datagram)
         {
             // 4 times???
-            client.SendData(datagram, datagram.Length, remoteEndpoint);
+            SendDatagram(datagram, datagram.Length);
             //client.SendData(datagram, datagram.Length, remoteEndpoint);
             //client.SendData(datagram, datagram.Length, remoteEndpoint);
             //client.SendData(datagram, datagram.Length, remoteEndpoint);
@@ -868,8 +864,8 @@ namespace KnxTunnelSS
                     ? (byte)0x50
                     : (byte)0xF0;
 
-            datagram[cemi_start_pos + i++] = 0x00;
-            datagram[cemi_start_pos + i++] = 0x00;
+            datagram[cemi_start_pos + i++] = myAddress[0];
+            datagram[cemi_start_pos + i++] = myAddress[1];
             byte[] dst_address = KnxHelper.GetAddress(destinationAddress);
             datagram[cemi_start_pos + i++] = dst_address[0];
             datagram[cemi_start_pos + i++] = dst_address[1];

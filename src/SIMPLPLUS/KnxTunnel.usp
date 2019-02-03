@@ -44,11 +44,13 @@ Comments:
 *******************************************************************************************/
 // #CRESTRON_LIBRARY ""
 // #USER_LIBRARY ""
+#USER_SIMPLSHARP_LIBRARY "KnxTunnelSS"
 
 /*******************************************************************************************
   DIGITAL, ANALOG and SERIAL INPUTS and OUTPUTS
   (Uncomment and declare inputs and outputs as needed)
 *******************************************************************************************/
+DIGITAL_INPUT	_SKIP_;			DIGITAL_OUTPUT	_SKIP_;
 DIGITAL_INPUT	_SKIP_;			DIGITAL_OUTPUT	_SKIP_;
 DIGITAL_INPUT	_SKIP_;			DIGITAL_OUTPUT	_SKIP_;
 DIGITAL_INPUT	_SKIP_;			DIGITAL_OUTPUT	_SKIP_;
@@ -67,8 +69,8 @@ STRING_INPUT	TX$[1024];		STRING_OUTPUT	RX$;
 *******************************************************************************************/
 STRING_PARAMETER IpAddress[64];
 INTEGER_PARAMETER Port;
-INTEGER_PARAMETER RX_Buffer_Sz;
-#USER_SIMPLSHARP_LIBRARY "KnxTunnelSS"
+INTEGER_PARAMETER LocalPort;
+STRING_PARAMETER MyKnxAddress[10];
 
 /*******************************************************************************************
   Parameter Properties
@@ -76,25 +78,33 @@ INTEGER_PARAMETER RX_Buffer_Sz;
 *******************************************************************************************/
 #BEGIN_PARAMETER_PROPERTIES IpAddress
    propDefaultValue="";
+   propShortDescription="IP address of the KNX router";
 #END_PARAMETER_PROPERTIES
 
 #BEGIN_PARAMETER_PROPERTIES Port
    propValidUnits=unitDecimal;
    propBounds=1d,65535d;
    propDefaultValue=3671d;
+   propShortDescription="remote port (default is 3671)";
 #END_PARAMETER_PROPERTIES
 
-#BEGIN_PARAMETER_PROPERTIES RX_BUFFER_SZ
+#BEGIN_PARAMETER_PROPERTIES LocalPort
    propValidUnits=unitDecimal;
-   propBounds=16d,1024d;
-   propDefaultValue=200d;
+   propBounds=1d,65535d;
+   propDefaultValue=3671d;
+   propShortDescription="local port (default is 3671). Use unique port for each tunnel instance";
+#END_PARAMETER_PROPERTIES
+
+#BEGIN_PARAMETER_PROPERTIES MyKnxAddress
+   propDefaultValue="15.15.255";
+   propShortDescription="Address from which telegrams are sent";
 #END_PARAMETER_PROPERTIES
 
 KnxTunnel Client; 
 
 PUSH Connect
 {
-	Client.Connect(IpAddress,Port,RX_BUFFER_SZ);
+	Client.Connect(IpAddress,Port,LocalPort,MyKnxAddress);
 }
 
 PUSH Disconnect
@@ -107,12 +117,14 @@ Callback Function MyOnConnect()
 	Connected = 1;
 	Disconnected = 0;
 }
-
+ 
+string $Time[100];
 Callback Function MyOnDisconnect()
 {
 	Connected = 0;
 	Disconnected = 1;
-	TRACE("On Disconnect\n");
+	$Time = Time();
+	TRACE("Disconnect at %s\r\n", $Time);
 }
 
 Callback Function MyOnReceive(String s)
