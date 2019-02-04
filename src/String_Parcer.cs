@@ -8,94 +8,104 @@ namespace KnxTunnelSS
 {
     internal class String_Pacer
     {
-        int nChunk_Size;
         int nDelay;
-
         CTimer Timer;
 
         CMutex bMutex = new CMutex();
 
-        public delegate void ChunkHandler(string data);
-        public ChunkHandler OnChunk { set; get; }
+        public delegate void RxHandler(string data);
+        public RxHandler OnReceive { set; get; }
 
-        public delegate void SendItemHandler(string data);
-        public ChunkHandler OnSendItem { set; get; }
+        public delegate void TxHandler(string data);
+        public RxHandler OnSend { set; get; }
 
-        public int Chunk_Size { set { nChunk_Size = value; } get { return nChunk_Size; } }
+        private Queue<string> SendQueue = new Queue<string>();
+        private Queue<string> ReceiveQueue = new Queue<string>();
 
-        StringBuilder Buffer;
-        StringBuilder SendData;
-
-        public String_Pacer(int chunk_size, int delay)
+        public String_Pacer(int delay)
         {
-            nChunk_Size = chunk_size;
             nDelay = delay;
-
             Timer = new CTimer(OnTimer, this, delay, delay);
-            Buffer = new StringBuilder();
-            SendData = new StringBuilder();
         }
 
-        public void AddData(SimplSharpString data)
+        void SendTelegramToKnx()
         {
-            bMutex.WaitForMutex();
-            SendData.Append(data.ToString());
-            bMutex.ReleaseMutex();
-        }
-
-        void SendChunk()
-        {
-            if (SendData.Length > 0)
+            if( SendQueue.Count > 0)
             {
-                string sout = SendData.ToString();
-                int idx = sout.IndexOf(';');
-                if( idx>0 )
+                bMutex.WaitForMutex();
+                try
                 {
-                    if (OnSendItem != null)
-                        OnSendItem(sout.Substring(0,idx).Replace(";",""));
-                    SendData.Remove(0, idx+1);
+                    string sout = SendQueue.Dequeue();
+                    if ((!string.IsNullOrEmpty(sout)) && (OnSend != null))
+                        OnSend(sout);
+                }
+                catch (Exception e)
+                {
+                    Logger.Log("SendTelegramToKnx: {0}", e.Message);
+                }
+                finally
+                {
+                    bMutex.ReleaseMutex();
+                }
+            }
+        }
+
+        void SendTelegramToController()
+        {
+            if (ReceiveQueue.Count > 0)
+            {
+                bMutex.WaitForMutex();
+                try
+                {
+                    string sout = ReceiveQueue.Dequeue();
+                    if (!string.IsNullOrEmpty(sout) && (OnReceive != null))
+                    {
+                        OnReceive(sout);
+                    }
+                }
+                catch (Exception e)
+                {
+                    Logger.Log("SendTelegramToController: {0}", e.Message);
+                }
+                finally
+                {
+                    bMutex.ReleaseMutex();
                 }
             }
         }
 
         void OnTimer(Object o)
         {
-            bMutex.WaitForMutex();
-            if (Buffer.Length > 0)
-            {
-                try
-                {
-                    {
-                        int l = (Buffer.Length > nChunk_Size) ? nChunk_Size : Buffer.Length;
-                        for (int i = 0; i < l; i++)
-                        {
-                            if (Buffer[i] == ';')
-                            {
-                                l = i+1;
-                                break;
-                            }
-                        }
+            SendTelegramToController();
+            SendTelegramToKnx();
+        }
 
-                        String s = Buffer.ToString(0, l);
-                        Buffer.Remove(0, l);
-                        if (OnChunk != null)
-                            OnChunk(s);
-                    }
-                }
-                catch (Exception e)
-                {
-                    Logger.Log(e.Message);
-                    Logger.Log(e.StackTrace);
-                }
-            }
-            SendChunk();
+        public void ClearTx()
+        {
+            bMutex.WaitForMutex();
+            SendQueue.Clear();
             bMutex.ReleaseMutex();
         }
 
-        public void Enqueue(String s)
+        public void EnqueueTX(SimplSharpString data)
+        {
+            string sdata = data.ToString();
+            bMutex.WaitForMutex();
+
+            foreach (string s in data.ToString().Split(';'))
+            {
+                if (!string.IsNullOrEmpty(s))
+                {
+                    SendQueue.Enqueue(s);
+                }
+            }
+            bMutex.ReleaseMutex();
+        }
+
+        public void EnqueueRX(String s)
         {
             bMutex.WaitForMutex();
-            Buffer.Append(s);
+            ReceiveQueue.Enqueue(s);
             bMutex.ReleaseMutex();
         }
     }
