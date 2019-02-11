@@ -10,13 +10,13 @@ namespace KnxTunnelSS
         private UDPServer client;
         private IPEndPoint localEndpoint;
         private IPEndPoint remoteEndpoint;
-        private CTimer requestTimer;
-        private const int stateRequestTimerInterval = 3000;    // check every 3 seconds - this makes reconnect faster
+        private CTimer udpReadTimer;
+        private CTimer stateRequestTimer;
+        private const int stateRequestTimerInterval = 3000;    // check every 3 seconds - this makes disconnect detection reasonably fast
 
         private readonly object _sendDatagramLock = new object();
-        private readonly object _sequenceNumberLock = new object();
-        private byte _sequenceNumber;
-        private readonly object _rxSequenceNumberLock = new object();
+        private readonly object _txsequenceNumberLock = new object();
+        private byte _txsequenceNumber;
         private byte _rxSequenceNumber;
         private byte[] myAddress;
 
@@ -24,7 +24,6 @@ namespace KnxTunnelSS
         private bool m_b_keep_alive = false;
         private const int buffersz = 1024;
 
-        // allow missing 1 cycle
         public bool Alive
         {
             get
@@ -64,19 +63,27 @@ namespace KnxTunnelSS
 
         internal byte ChannelId { get; set; }
 
-        internal byte GenerateSequenceNumber()
+        internal byte IncrementSequenceNumber()
         {
-            return _sequenceNumber++;
+            byte bret;
+            CMonitor.Enter(_txsequenceNumberLock);
+            bret = _txsequenceNumber++;
+            CMonitor.Exit(_txsequenceNumberLock);
+            return bret;
         }
 
-        internal void RevertSingleSequenceNumber()
+        internal void DecrementSingleSequenceNumber()
         {
-            _sequenceNumber--;
+            CMonitor.Enter(_txsequenceNumberLock);
+            _txsequenceNumber--;
+            CMonitor.Exit(_txsequenceNumberLock);
         }
 
         internal void ResetSequenceNumber()
         {
-            _sequenceNumber = 0x00;
+            CMonitor.Enter(_txsequenceNumberLock);
+            _txsequenceNumber = 0x00;
+            CMonitor.Exit(_txsequenceNumberLock);
         }
 
         public int Debug
@@ -94,7 +101,8 @@ namespace KnxTunnelSS
             Pacer = new String_Pacer(100);   // do not send/receive more than 10 telegrams/sec
             Pacer.OnReceive = MyRxHandler;
             Pacer.OnSend = MyTxHandler;
-            requestTimer = new CTimer(StateRequest, Timeout.Infinite);
+            udpReadTimer = new CTimer(UdpRead, Timeout.Infinite);
+            stateRequestTimer = new CTimer(StateRequest, Timeout.Infinite);
         }
 
         internal void MyRxHandler(string data)
@@ -189,12 +197,19 @@ namespace KnxTunnelSS
                 if (error == SocketErrorCodes.SOCKET_OK)
                 {
                     // start recieveing
-                    error = client.ReceiveDataAsync(udpReceiver);
-                    if (error == SocketErrorCodes.SOCKET_OPERATION_PENDING)
+                    //error = client.ReceiveDataAsync(udpReceiver);
+                    //if (error == SocketErrorCodes.SOCKET_OPERATION_PENDING)
+                    //{
+                    error = ConnectRequest();
+                    if (error != SocketErrorCodes.SOCKET_OK)
                     {
-                        error = ConnectRequest();
-                        if (error != SocketErrorCodes.SOCKET_OK)
-                            client.DisableUDPServer();
+                        client.DisableUDPServer();
+                        client = null;
+                    }
+                    else
+                    {
+                        udpReadTimer.Reset();
+                        stateRequestTimer.Reset(stateRequestTimerInterval);
                     }
                 }
             }
@@ -213,7 +228,7 @@ namespace KnxTunnelSS
             Logger.Log("Disconnect()");
             if (client != null)
             {
-                requestTimer.Stop();
+                stateRequestTimer.Stop();
                 Alive = false;
                 DisconnectRequest();
                 client.DisableUDPServer();
@@ -234,22 +249,25 @@ namespace KnxTunnelSS
                 Logger.Log("Error: Send() to a Null client!");
         }
 
-        public void udpReceiver(UDPServer session, int len)
+        // changed to synchronious receive to simplify the code
+        public void UdpRead( object sender )
         {
-            Logger.Log("udpReceiver");
-            if (len > 0)
+            while (true)
             {
-                Alive = true;
-                byte[] datagram = session.IncomingDataBuffer;
-                ProcessDatagram(datagram);
-                // ProcessDatagram could disconnect the client
-                if (client != null)
+                if (client == null)
+                    break;
+                int len = client.ReceiveData();
+                if (len > 0)
                 {
-                    SocketErrorCodes err = client.ReceiveDataAsync(udpReceiver);
-                    if (err != SocketErrorCodes.SOCKET_OPERATION_PENDING)
-                    {
-                        ErrorLog.Error("client.ReceiveDataAsync: {0}", err.ToString());
-                    }
+                    Logger.Log("UdpRead: received {0} byte", len);
+                    Alive = true;
+                    byte[] datagram = client.IncomingDataBuffer;
+                    ProcessDatagram(datagram);
+                }
+                else
+                {
+                    ErrorLog.Error("UdpReader: len {0}", len);
+                    break;
                 }
             }
         }
@@ -277,6 +295,7 @@ namespace KnxTunnelSS
             catch (Exception e)
             {
                 Logger.Log("ProcessDatagram: Exception ({0})", e.Message);
+                ErrorLog.Exception("ProcessDatagram:", e);
             }
         }
 
@@ -303,7 +322,7 @@ namespace KnxTunnelSS
             {
                 ChannelId = knxDatagram.channel_id;
                 ResetSequenceNumber();
-                requestTimer.Reset(stateRequestTimerInterval);
+                stateRequestTimer.Reset(stateRequestTimerInterval);
                 if (OnConnect != null)
                     OnConnect();
             }
@@ -333,10 +352,13 @@ namespace KnxTunnelSS
 
         private void StateRequest(object sender)
         {
-            if (!Alive)
+            if (client == null)
+                return;
+
+            if (!Alive) // state response lost ?
             {
-                // nothing recieved since last keep alive
-                ErrorLog.Error("StateRequest: no response to keep alive, disconnecting");
+                ErrorLog.Error("StateRequest: no response to previous StateRequest, disconnect, socket status {0}:{1}",
+                client.ServerStatus, client.DataAvailable);
                 Disconnect();
                 return;
             }
@@ -364,7 +386,7 @@ namespace KnxTunnelSS
             datagram[15] = (byte)localEndpoint.Port;
 
             SendDatagram(datagram, datagram.Length);
-            requestTimer.Reset(stateRequestTimerInterval);
+            stateRequestTimer.Reset(stateRequestTimerInterval);
         }
 
         private SocketErrorCodes SendDatagram(byte[] data, int len)
@@ -384,6 +406,11 @@ namespace KnxTunnelSS
 
         private void ProcessDisconnectRequest(byte[] datagram)
         {
+            var channelId = datagram[7];
+            if (channelId != ChannelId)
+            {
+                return;
+            }
             Disconnect();
         }
 
@@ -406,19 +433,7 @@ namespace KnxTunnelSS
             }
 
             var sequenceNumber = datagram[8];
-//            var process = true;
-            
-            // Possibility to miss every 256-s packet
-            // this happens if seq number goes from 255 to 0
-            // it's better to cache last used telegram and not to resend to crestron the same value twice
-            // 
-            CMonitor.Enter(_rxSequenceNumberLock);
-//            if (sequenceNumber <= _rxSequenceNumber)
-//                process = false;
-
             _rxSequenceNumber = sequenceNumber;
-            CMonitor.Exit(_rxSequenceNumberLock);
-            // TODO: Magic number 10, what is it?
             var cemi = new byte[datagram.Length - 10];
             Array.Copy(datagram, 10, cemi, 0, datagram.Length - 10);
 
@@ -622,7 +637,7 @@ namespace KnxTunnelSS
             datagram[14] = (byte)(localEndpoint.Port >> 8);
             datagram[15] = (byte)localEndpoint.Port;
 
-            requestTimer.Stop();
+            stateRequestTimer.Stop();
             SendDatagram(datagram, datagram.Length);
         }
 
@@ -676,7 +691,6 @@ namespace KnxTunnelSS
 
         protected byte[] CreateActionDatagram(string destinationAddress, bool b_bit, byte[] data)
         {
-            CMonitor.Enter(_sequenceNumberLock);
             try
             {
                 var dataLength = KnxHelper.GetDataLength(b_bit,data);
@@ -694,19 +708,15 @@ namespace KnxTunnelSS
 
                 datagram[06] = 0x04;
                 datagram[07] = ChannelId;
-                datagram[08] = GenerateSequenceNumber();
+                datagram[08] = IncrementSequenceNumber();
                 datagram[09] = 0x00;
 
                 return CreateActionDatagramCommon(destinationAddress, b_bit, data, datagram);
             }
             catch
             {
-                RevertSingleSequenceNumber();
+                DecrementSingleSequenceNumber();
                 return null;
-            }
-            finally
-            {
-                CMonitor.Exit(_sequenceNumberLock);
             }
         }
 
@@ -817,7 +827,6 @@ namespace KnxTunnelSS
 
         protected byte[] CreateRequestStatusDatagram(string destinationAddress)
         {
-            CMonitor.Enter(_sequenceNumberLock);
             try
             {
                 // HEADER
@@ -831,19 +840,15 @@ namespace KnxTunnelSS
 
                 datagram[06] = 0x04;
                 datagram[07] = ChannelId;
-                datagram[08] = GenerateSequenceNumber();
+                datagram[08] = IncrementSequenceNumber();
                 datagram[09] = 0x00;
 
                 return CreateRequestStatusDatagramCommon(destinationAddress, datagram, 10);
             }
             catch
             {
-                RevertSingleSequenceNumber();
+                DecrementSingleSequenceNumber();
                 return null;
-            }
-            finally
-            {
-                CMonitor.Exit(_sequenceNumberLock);
             }
         }
 
