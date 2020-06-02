@@ -191,8 +191,6 @@ namespace KnxTunnelSS
 
                 client = new UDPServer(remoteEndpoint, src_port, buffersz, EthernetAdapterType.EthernetLANAdapter);
 
-                InitialParametersClass.ReadInInitialParameters(1);
-
                 error = client.EnableUDPServer();
                 if (error == SocketErrorCodes.SOCKET_OK)
                 {
