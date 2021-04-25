@@ -258,7 +258,6 @@ namespace KnxTunnelSS
                 if (len > 0)
                 {
                     Logger.Log("UdpRead: received {0} byte", len);
-                    Alive = true;
                     byte[] datagram = client.IncomingDataBuffer;
                     ProcessDatagram(datagram);
                 }
@@ -321,6 +320,7 @@ namespace KnxTunnelSS
                 ChannelId = knxDatagram.channel_id;
                 ResetSequenceNumber();
                 stateRequestTimer.Reset(stateRequestTimerInterval);
+                Alive = true;
                 if (OnConnect != null)
                     OnConnect();
             }
@@ -341,10 +341,17 @@ namespace KnxTunnelSS
 
             var response = datagram[7];
 
-            if (response != 0x21)
+            if (response == 0)
+            {
+                Alive = true;
                 return;
+            }
 
-            Logger.Log("ProcessConnectionStateResponse - No active connection with channel ID {0}", knxDatagram.channel_id);
+            if (response == 0x21)
+                Logger.Log("ProcessConnectionStateResponse - No active connection with channel ID {0}", knxDatagram.channel_id);
+            else
+                Logger.Log("ProcessConnectionStateResponse - Error code {0}", response);
+
             Disconnect();
         }
 

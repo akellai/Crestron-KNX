@@ -71,7 +71,7 @@ namespace KnxTunnelSS
             {
                 // 3 level individual or group
                 address = group
-                    ? ((addr[0] & 0x7F) >> 3).ToString()
+                    ? (addr[0] >> 3).ToString()
                     : (addr[0] >> 4).ToString();
 
                 address += separator;
@@ -138,7 +138,7 @@ namespace KnxTunnelSS
                 else
                 {
                     var part = int.Parse(parts[0]);
-                    if (part > 15)
+                    if ((group && part > 31) || (!group && part > 15))
                         throw new ArgumentException(address);
 
                     addr[0] = group
