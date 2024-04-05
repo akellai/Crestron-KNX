@@ -8,76 +8,35 @@ namespace KnxTunnelSS
 {
     internal class String_Pacer
     {
-        int nDelay;
         CTimer Timer;
+        long m_delay;
+        bool m_active = false;
 
         CMutex bMutex = new CMutex();
 
         public delegate void RxHandler(string data);
-        public RxHandler OnReceive { set; get; }
-
-        public delegate void TxHandler(string data);
         public RxHandler OnSend { set; get; }
 
         private Queue<string> SendQueue = new Queue<string>();
-        private Queue<string> ReceiveQueue = new Queue<string>();
 
         public String_Pacer(int delay)
         {
-            nDelay = delay;
-            Timer = new CTimer(OnTimer, this, delay, delay);
-        }
-
-        void SendTelegramToKnx()
-        {
-            if( SendQueue.Count > 0)
-            {
-                bMutex.WaitForMutex();
-                try
-                {
-                    string sout = SendQueue.Dequeue();
-                    if ((!string.IsNullOrEmpty(sout)) && (OnSend != null))
-                        OnSend(sout);
-                }
-                catch (Exception e)
-                {
-                    Logger.Log("SendTelegramToKnx: {0}", e.Message);
-                }
-                finally
-                {
-                    bMutex.ReleaseMutex();
-                }
-            }
-        }
-
-        void SendTelegramToController()
-        {
-            if (ReceiveQueue.Count > 0)
-            {
-                bMutex.WaitForMutex();
-                try
-                {
-                    string sout = ReceiveQueue.Dequeue();
-                    if (!string.IsNullOrEmpty(sout) && (OnReceive != null))
-                    {
-                        OnReceive(sout);
-                    }
-                }
-                catch (Exception e)
-                {
-                    Logger.Log("SendTelegramToController: {0}", e.Message);
-                }
-                finally
-                {
-                    bMutex.ReleaseMutex();
-                }
-            }
+            m_delay = delay;
+            Timer = new CTimer(OnTimer, Timeout.Infinite);
         }
 
         void OnTimer(Object o)
         {
-            SendTelegramToController();
-            SendTelegramToKnx();
+            bMutex.WaitForMutex();
+            if ((SendQueue.Count > 0) && (OnSend != null))
+            {
+                m_active = true;
+                OnSend(SendQueue.Dequeue());
+                Timer.Reset(m_delay);
+            }
+            else
+                m_active = false;
+            bMutex.ReleaseMutex();
         }
 
         public void ClearTx()
@@ -87,25 +46,18 @@ namespace KnxTunnelSS
             bMutex.ReleaseMutex();
         }
 
-        public void EnqueueTX(SimplSharpString data)
+        public void EnqueueTX(string data)
         {
-            string sdata = data.ToString();
             bMutex.WaitForMutex();
-
-            foreach (string s in data.ToString().Split(';'))
+            foreach (string s in data.Split(';'))
             {
                 if (!string.IsNullOrEmpty(s))
                 {
                     SendQueue.Enqueue(s);
                 }
             }
-            bMutex.ReleaseMutex();
-        }
-
-        public void EnqueueRX(String s)
-        {
-            bMutex.WaitForMutex();
-            ReceiveQueue.Enqueue(s);
+            if (!m_active)
+                Timer.Reset(m_delay);
             bMutex.ReleaseMutex();
         }
     }

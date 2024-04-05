@@ -99,16 +99,9 @@ namespace KnxTunnelSS
         public KnxTunnel()
         {
             Pacer = new String_Pacer(100);   // do not send/receive more than 10 telegrams/sec
-            Pacer.OnReceive = MyRxHandler;
             Pacer.OnSend = MyTxHandler;
             udpReadTimer = new CTimer(UdpRead, Timeout.Infinite);
             stateRequestTimer = new CTimer(StateRequest, Timeout.Infinite);
-        }
-
-        internal void MyRxHandler(string data)
-        {
-            if (OnRx != null)
-                OnRx(new SimplSharpString(data));
         }
 
         public static byte[] ToByteArray(String hexString)
@@ -133,14 +126,14 @@ namespace KnxTunnelSS
                     string GA = sitems[0];
                     int len = int.Parse(sitems[1]);
                     byte[] val = ToByteArray(sitems[2]);
-                    Logger.Log("MySendItem before Action: {0}:{1}:{2}", GA, len, val.Length );
-                    Action(GA, len==1, val);
+                    Logger.Log("MySendItem before CreateActionDatagram: {0}:{1}:{2}", GA, len, val.Length);
+                    SendData(CreateActionDatagram(GA, len == 1, val));
                 }
                 else if (sitems.Length == 1)
                 {
                     string GA = sitems[0];
                     Logger.Log("MySendItem before read request: {0}", GA);
-                    RequestStatus(GA);
+                    SendData(CreateRequestStatusDatagram(GA));
                 }
                 else
                     Logger.Log("MySendItem invalid item: {0}", data);
@@ -172,11 +165,8 @@ namespace KnxTunnelSS
             if (client != null)
             {
                 if (client.ServerStatus == SocketStatus.SOCKET_STATUS_CONNECTED)
-                {
                     DisconnectRequest();
-                    client.DisableUDPServer();
-                    client = null;
-                }
+                Disconnect();
             }
 
             SocketErrorCodes error = SocketErrorCodes.SOCKET_INVALID_STATE;
@@ -226,11 +216,13 @@ namespace KnxTunnelSS
             Logger.Log("Disconnect()");
             if (client != null)
             {
+                udpReadTimer.Stop();
                 stateRequestTimer.Stop();
                 Alive = false;
                 DisconnectRequest();
                 client.DisableUDPServer();
                 Pacer.ClearTx();
+                client.Dispose();
                 client = null;
                 if (OnDisconnect != null)
                     OnDisconnect();
@@ -241,7 +233,7 @@ namespace KnxTunnelSS
         {
             if (client != null)
             {
-                Pacer.EnqueueTX(data);
+                Pacer.EnqueueTX(data.ToString());
             }
             else
                 Logger.Log("Error: Send() to a Null client!");
@@ -258,12 +250,12 @@ namespace KnxTunnelSS
                 if (len > 0)
                 {
                     Logger.Log("UdpRead: received {0} byte", len);
-                    byte[] datagram = client.IncomingDataBuffer;
-                    ProcessDatagram(datagram);
+                    ProcessDatagram(client.IncomingDataBuffer);
                 }
                 else
                 {
                     ErrorLog.Error("UdpReader: len {0}", len);
+                    udpReadTimer.Stop();
                     break;
                 }
             }
@@ -298,18 +290,7 @@ namespace KnxTunnelSS
 
         private void ProcessConnectResponse(byte[] datagram)
         {
-            // HEADER
-            var knxDatagram = new KnxDatagram
-            {
-                header_length = datagram[0],
-                protocol_version = datagram[1],
-                service_type = new[] { datagram[2], datagram[3] },
-                total_length = datagram[4] + datagram[5],
-                channel_id = datagram[6],
-                status = datagram[7]
-            };
-
-            if (knxDatagram.channel_id == 0x00 && knxDatagram.status == 0x24)
+            if (datagram[6] == 0x00 && datagram[7] == 0x24)
             {
                 Logger.Log("ProcessConnectResponse: - No more connections available");
                 ErrorLog.Error("ProcessConnectResponse - No more connections available");
@@ -317,7 +298,7 @@ namespace KnxTunnelSS
             }
             else
             {
-                ChannelId = knxDatagram.channel_id;
+                ChannelId = datagram[6];
                 ResetSequenceNumber();
                 stateRequestTimer.Reset(stateRequestTimerInterval);
                 Alive = true;
@@ -328,17 +309,6 @@ namespace KnxTunnelSS
 
         private void ProcessConnectionStateResponse(byte[] datagram)
         {
-            // HEADER
-            // 06 10 02 08 00 08 -- 48 21
-            var knxDatagram = new KnxDatagram
-            {
-                header_length = datagram[0],
-                protocol_version = datagram[1],
-                service_type = new[] { datagram[2], datagram[3] },
-                total_length = datagram[4] + datagram[5],
-                channel_id = datagram[6]
-            };
-
             var response = datagram[7];
 
             if (response == 0)
@@ -348,7 +318,7 @@ namespace KnxTunnelSS
             }
 
             if (response == 0x21)
-                Logger.Log("ProcessConnectionStateResponse - No active connection with channel ID {0}", knxDatagram.channel_id);
+                Logger.Log("ProcessConnectionStateResponse - No active connection with channel ID {0}", datagram[6]);
             else
                 Logger.Log("ProcessConnectionStateResponse - Error code {0}", response);
 
@@ -364,31 +334,23 @@ namespace KnxTunnelSS
             {
                 ErrorLog.Error("StateRequest: no response to previous StateRequest, disconnect, socket status {0}:{1}",
                 client.ServerStatus, client.DataAvailable);
+                DisconnectRequest();
                 Disconnect();
                 return;
             }
 
-            // HEADER
-            var datagram = new byte[16];
             Logger.Log("StateRequest");
 
-            datagram[00] = 0x06;
-            datagram[01] = 0x10;
-            datagram[02] = 0x02;
-            datagram[03] = 0x07;
-            datagram[04] = 0x00;
-            datagram[05] = 0x10;
-
-            datagram[06] = ChannelId;
-            datagram[07] = 0x00;
-            datagram[08] = 0x08;
-            datagram[09] = 0x01;
-            datagram[10] = localEndpoint.Address.GetAddressBytes()[0];
-            datagram[11] = localEndpoint.Address.GetAddressBytes()[1];
-            datagram[12] = localEndpoint.Address.GetAddressBytes()[2];
-            datagram[13] = localEndpoint.Address.GetAddressBytes()[3];
-            datagram[14] = (byte)(localEndpoint.Port >> 8);
-            datagram[15] = (byte)localEndpoint.Port;
+            byte[] datagram = {
+                0x06, 0x10, 0x02, 0x07, 0x00,
+                0x10, ChannelId, 0x00, 0x08, 0x01,
+                localEndpoint.Address.GetAddressBytes()[0],
+                localEndpoint.Address.GetAddressBytes()[1],
+                localEndpoint.Address.GetAddressBytes()[2],
+                localEndpoint.Address.GetAddressBytes()[3],
+                (byte)(localEndpoint.Port >> 8),
+                (byte)localEndpoint.Port
+            };
 
             SendDatagram(datagram, datagram.Length);
             stateRequestTimer.Reset(stateRequestTimerInterval);
@@ -411,8 +373,7 @@ namespace KnxTunnelSS
 
         private void ProcessDisconnectRequest(byte[] datagram)
         {
-            var channelId = datagram[7];
-            if (channelId != ChannelId)
+            if (datagram[7] != ChannelId)
             {
                 return;
             }
@@ -421,70 +382,52 @@ namespace KnxTunnelSS
 
         private void ProcessDatagramHeaders(byte[] datagram)
         {
-            // HEADER
-            // TODO: Might be interesting to take out these magic numbers for the datagram indices
-            var knxDatagram = new KnxDatagram
-            {
-                header_length = datagram[0],
-                protocol_version = datagram[1],
-                service_type = new[] { datagram[2], datagram[3] },
-                total_length = datagram[4] + datagram[5]
-            };
-
-            var channelId = datagram[7];
-            if (channelId != ChannelId)
-            {
+            if (datagram[7] != ChannelId)
                 return;
-            }
 
-            var sequenceNumber = datagram[8];
-            _rxSequenceNumber = sequenceNumber;
-            var cemi = new byte[datagram.Length - 10];
-            Array.Copy(datagram, 10, cemi, 0, datagram.Length - 10);
-
-            SendTunnelingAck(sequenceNumber);
-            ProcessCEMI(knxDatagram, cemi);
+            SendTunnelingAck(datagram[8]);
+            ProcessCEMI(datagram);
         }
 
         public void SendTunnelingAck(byte sequenceNumber)
         {
-            // HEADER
-            var datagram = new byte[10];
-            datagram[00] = 0x06;
-            datagram[01] = 0x10;
-            datagram[02] = 0x04;
-            datagram[03] = 0x21;
-            datagram[04] = 0x00;
-            datagram[05] = 0x0A;
-
-            datagram[06] = 0x04;
-            datagram[07] = ChannelId;
-            datagram[08] = sequenceNumber;
-            datagram[09] = 0x00;
-
+            byte[] datagram =
+            {
+                0x06, 0x10, 0x04, 0x21, 0,
+                0x0A, 0x04, ChannelId, sequenceNumber, 0
+            };
             SendDatagram(datagram, datagram.Length);
         }
 
-        private void BuildAndExecuteKnxRx(KnxDatagram datagram)
+        private void BuildAndExecuteKnxRx(byte[] datagram)
         {
+            int len = datagram[11];
+            int dl = datagram[18 + len];
             string data = string.Empty;
-            if (datagram.data_length == 1)
+            if (dl == 1)
             {
-                int bitval = datagram.apdu[1] & 0x3F;
+                int bitval = datagram[20 + len] & 0x3F;
                 data = bitval.ToString("X2");
             }
             else
             {
-                data = BitConverter.ToString(datagram.apdu, 2).Replace("-", string.Empty);
+                data = BitConverter.ToString(datagram, 21 + len, dl - 1).Replace("-", string.Empty);
             }
 
-            data = datagram.destination_address + ":" +
-                datagram.data_length + ":" + data;
+            string destination_address = KnxHelper.GetKnxDestinationAddressType(datagram[13 + len]).Equals(KnxHelper.KnxDestinationAddressType.INDIVIDUAL)
+                        ? KnxHelper.GetIndividualAddress(new[] { datagram[16 + len], datagram[17 + len] })
+                        : KnxHelper.GetGroupAddress(new[] { datagram[16 + len], datagram[17 + len] },
+                        true);
 
-            Pacer.EnqueueRX(data);
+
+            data = destination_address + ":" +
+                dl + ":" + data;
+
+            if (OnRx != null)
+                OnRx(data);
         }
 
-        protected void ProcessCEMI(KnxDatagram datagram, byte[] cemi)
+        protected void ProcessCEMI(byte[] datagram)
         {
             try
             {
@@ -546,71 +489,18 @@ namespace KnxTunnelSS
                 //                    information (APCI) and data passed as an argument from higher layers of
                 //                    the KNX communication stack
                 //
-                datagram.message_code = cemi[0];
-                datagram.aditional_info_length = cemi[1];
-
-                if (datagram.aditional_info_length > 0)
-                {
-                    datagram.aditional_info = new byte[datagram.aditional_info_length];
-                    for (var i = 0; i < datagram.aditional_info_length; i++)
-                    {
-                        datagram.aditional_info[i] = cemi[2 + i];
-                    }
-                }
-
-                datagram.control_field_1 = cemi[2 + datagram.aditional_info_length];
-                datagram.control_field_2 = cemi[3 + datagram.aditional_info_length];
-                datagram.source_address = KnxHelper.GetIndividualAddress(new[] { cemi[4 + datagram.aditional_info_length], cemi[5 + datagram.aditional_info_length] });
-
-                datagram.destination_address =
-                    KnxHelper.GetKnxDestinationAddressType(datagram.control_field_2).Equals(KnxHelper.KnxDestinationAddressType.INDIVIDUAL)
-                        ? KnxHelper.GetIndividualAddress(new[] { cemi[6 + datagram.aditional_info_length], cemi[7 + datagram.aditional_info_length] })
-                        : KnxHelper.GetGroupAddress(new[] { cemi[6 + datagram.aditional_info_length], cemi[7 + datagram.aditional_info_length] }, 
-                        true);
-
-                datagram.data_length = cemi[8 + datagram.aditional_info_length];
-                datagram.apdu = new byte[datagram.data_length + 1];
-
-                for (var i = 0; i < datagram.apdu.Length; i++)
-                    datagram.apdu[i] = cemi[9 + i + datagram.aditional_info_length];
-
-                datagram.data = KnxHelper.GetData(datagram.data_length, datagram.apdu);
-
-                Logger.Log("-----------------------------------------------------------------------------------------------------");
-                Logger.Log(BitConverter.ToString(cemi));
-                Logger.Log("Event Header Length: " + datagram.header_length);
-                Logger.Log("Event Protocol Version: " + datagram.protocol_version.ToString("x"));
-                Logger.Log("Event Service Type: 0x" + BitConverter.ToString(datagram.service_type).Replace("-", string.Empty));
-                Logger.Log("Event Total Length: " + datagram.total_length);
-
-                Logger.Log("Event Message Code: " + datagram.message_code.ToString("x"));
-                Logger.Log("Event Aditional Info Length: " + datagram.aditional_info_length);
-
-                if (datagram.aditional_info_length > 0)
-                    Logger.Log("Event Aditional Info: 0x" + BitConverter.ToString(datagram.aditional_info).Replace("-", string.Empty));
-
-                Logger.Log("Event Control Field 1: " + Convert.ToString(datagram.control_field_1, 2));
-                Logger.Log("Event Control Field 2: " + Convert.ToString(datagram.control_field_2, 2));
-                Logger.Log("Event Source Address: " + datagram.source_address);
-                Logger.Log("Event Destination Address: " + datagram.destination_address);
-                Logger.Log("Event Data Length: " + datagram.data_length);
-                Logger.Log("Event APDU: 0x" + BitConverter.ToString(datagram.apdu).Replace("-", string.Empty));
-                Logger.Log("-----------------------------------------------------------------------------------------------------");
-
-                if (datagram.message_code != 0x29)
+                if (datagram[10] != 0x29)
                     return;
 
-                var type = datagram.apdu[1] >> 4;
+                var type = datagram[20 + datagram[11]] >> 4;
 
                 switch (type)
                 {
                     case 8:
                         BuildAndExecuteKnxRx(datagram);
-                        Logger.Log("{0}", datagram.source_address);
                         break;
                     case 4:
                         BuildAndExecuteKnxRx(datagram);
-                        Logger.Log("Device {0} status {1}", datagram.source_address, datagram.destination_address);
                         break;
                 }
             }
@@ -623,24 +513,16 @@ namespace KnxTunnelSS
         internal void DisconnectRequest()
         {
             // HEADER
-            byte[] datagram = new byte[16];
-            datagram[00] = 0x06;
-            datagram[01] = 0x10;
-            datagram[02] = 0x02;
-            datagram[03] = 0x09;
-            datagram[04] = 0x00;
-            datagram[05] = 0x10;
-
-            datagram[06] = ChannelId;
-            datagram[07] = 0x00;
-            datagram[08] = 0x08;
-            datagram[09] = 0x01;
-            datagram[10] = localEndpoint.Address.GetAddressBytes()[0];
-            datagram[11] = localEndpoint.Address.GetAddressBytes()[1];
-            datagram[12] = localEndpoint.Address.GetAddressBytes()[2];
-            datagram[13] = localEndpoint.Address.GetAddressBytes()[3];
-            datagram[14] = (byte)(localEndpoint.Port >> 8);
-            datagram[15] = (byte)localEndpoint.Port;
+            byte[] datagram = {
+                0x06, 0x10, 0x02, 0x09, 0x00, 
+                0x10, ChannelId, 0x00, 0x08, 0x01,
+                localEndpoint.Address.GetAddressBytes()[0],
+                localEndpoint.Address.GetAddressBytes()[1],
+                localEndpoint.Address.GetAddressBytes()[2],
+                localEndpoint.Address.GetAddressBytes()[3],
+                (byte)(localEndpoint.Port >> 8),
+                (byte)localEndpoint.Port
+                };
 
             stateRequestTimer.Stop();
             SendDatagram(datagram, datagram.Length);
@@ -648,35 +530,24 @@ namespace KnxTunnelSS
 
         private SocketErrorCodes ConnectRequest()
         {
-            // HEADER
-            byte[] datagram = new byte[26];
-            datagram[00] = 0x06;
-            datagram[01] = 0x10;
-            datagram[02] = 0x02;
-            datagram[03] = 0x05;
-            datagram[04] = 0x00;
-            datagram[05] = 0x1A;
-
-            datagram[06] = 0x08;
-            datagram[07] = 0x01;
-            datagram[08] = localEndpoint.Address.GetAddressBytes()[0];
-            datagram[09] = localEndpoint.Address.GetAddressBytes()[1];
-            datagram[10] = localEndpoint.Address.GetAddressBytes()[2];
-            datagram[11] = localEndpoint.Address.GetAddressBytes()[3];
-            datagram[12] = (byte)(localEndpoint.Port >> 8);
-            datagram[13] = (byte)localEndpoint.Port;
-            datagram[14] = 0x08;
-            datagram[15] = 0x01;
-            datagram[16] = localEndpoint.Address.GetAddressBytes()[0];
-            datagram[17] = localEndpoint.Address.GetAddressBytes()[1];
-            datagram[18] = localEndpoint.Address.GetAddressBytes()[2];
-            datagram[19] = localEndpoint.Address.GetAddressBytes()[3];
-            datagram[20] = (byte)(localEndpoint.Port >> 8);
-            datagram[21] = (byte)localEndpoint.Port;
-            datagram[22] = 0x04;
-            datagram[23] = 0x04;
-            datagram[24] = 0x02;
-            datagram[25] = 0x00;
+            byte[] datagram = {
+                0x06, 0x10, 0x02, 0x05,
+                0x00, 0x1A, 0x08, 0x01,
+                localEndpoint.Address.GetAddressBytes()[0],
+                localEndpoint.Address.GetAddressBytes()[1],
+                localEndpoint.Address.GetAddressBytes()[2],
+                localEndpoint.Address.GetAddressBytes()[3],
+                (byte)(localEndpoint.Port >> 8),
+                (byte)localEndpoint.Port,
+                0x08, 0x01,
+                localEndpoint.Address.GetAddressBytes()[0],
+                localEndpoint.Address.GetAddressBytes()[1],
+                localEndpoint.Address.GetAddressBytes()[2],
+                localEndpoint.Address.GetAddressBytes()[3],
+                (byte)(localEndpoint.Port >> 8),
+                (byte)localEndpoint.Port,
+                0x04, 0x04, 0x02, 0x00
+                };
 
             SocketErrorCodes err = SendDatagram(datagram, datagram.Length);
             Logger.Log("ConnectRequest {0} {1} {2}", err,
@@ -684,37 +555,18 @@ namespace KnxTunnelSS
             return err;
         }
 
-        public void Action(string destinationAddress, bool b_bit, byte[] data)
-        {
-            SendData(CreateActionDatagram(destinationAddress, b_bit, data));
-        }
-
-        public void RequestStatus(string destinationAddress)
-        {
-            SendData(CreateRequestStatusDatagram(destinationAddress));
-        }
-
         protected byte[] CreateActionDatagram(string destinationAddress, bool b_bit, byte[] data)
         {
             try
             {
-                var dataLength = KnxHelper.GetDataLength(b_bit,data);
+                int dataLength = KnxHelper.GetDataLength(b_bit,data);
+                byte[] totalLength = BitConverter.GetBytes(dataLength + 20);
 
-                // HEADER
-                var datagram = new byte[10];
-                datagram[00] = 0x06;
-                datagram[01] = 0x10;
-                datagram[02] = 0x04;
-                datagram[03] = 0x20;
-
-                var totalLength = BitConverter.GetBytes(dataLength + 20);
-                datagram[04] = totalLength[1];
-                datagram[05] = totalLength[0];
-
-                datagram[06] = 0x04;
-                datagram[07] = ChannelId;
-                datagram[08] = IncrementSequenceNumber();
-                datagram[09] = 0x00;
+                byte[] datagram = {
+                    0x06, 0x10, 0x04, 0x20,
+                    totalLength[1], totalLength[0],
+                    0x04, ChannelId, IncrementSequenceNumber(), 0x00
+                };
 
                 return CreateActionDatagramCommon(destinationAddress, b_bit, data, datagram);
             }
@@ -823,14 +675,10 @@ namespace KnxTunnelSS
 
         public void SendData(byte[] datagram)
         {
-            // 4 times???
             SendDatagram(datagram, datagram.Length);
-            //client.SendData(datagram, datagram.Length, remoteEndpoint);
-            //client.SendData(datagram, datagram.Length, remoteEndpoint);
-            //client.SendData(datagram, datagram.Length, remoteEndpoint);
         }
 
-        protected byte[] CreateRequestStatusDatagram(string destinationAddress)
+        private byte[] CreateRequestStatusDatagram(string destinationAddress)
         {
             try
             {
@@ -848,43 +696,36 @@ namespace KnxTunnelSS
                 datagram[08] = IncrementSequenceNumber();
                 datagram[09] = 0x00;
 
-                return CreateRequestStatusDatagramCommon(destinationAddress, datagram, 10);
+                datagram[10] =
+                    ActionMessageCode != 0x00
+                        ? ActionMessageCode
+                        : (byte)0x11;
+
+                datagram[11] = 0x00;
+                datagram[12] = 0xAC;
+
+                datagram[13] =
+                    KnxHelper.IsAddressIndividual(destinationAddress)
+                        ? (byte)0x50
+                        : (byte)0xF0;
+
+                datagram[14] = myAddress[0];
+                datagram[15] = myAddress[1];
+                byte[] dst_address = KnxHelper.GetAddress(destinationAddress);
+                datagram[16] = dst_address[0];
+                datagram[17] = dst_address[1];
+
+                datagram[18] = 0x01;
+                datagram[19] = 0x00;
+                datagram[20] = 0x00;
+
+                return datagram;
             }
             catch
             {
                 DecrementSingleSequenceNumber();
                 return null;
             }
-        }
-
-        protected byte[] CreateRequestStatusDatagramCommon(string destinationAddress, byte[] datagram, int cemi_start_pos)
-        {
-            var i = 0;
-
-            datagram[cemi_start_pos + i++] =
-                ActionMessageCode != 0x00
-                    ? ActionMessageCode
-                    : (byte)0x11;
-
-            datagram[cemi_start_pos + i++] = 0x00;
-            datagram[cemi_start_pos + i++] = 0xAC;
-
-            datagram[cemi_start_pos + i++] =
-                KnxHelper.IsAddressIndividual(destinationAddress)
-                    ? (byte)0x50
-                    : (byte)0xF0;
-
-            datagram[cemi_start_pos + i++] = myAddress[0];
-            datagram[cemi_start_pos + i++] = myAddress[1];
-            byte[] dst_address = KnxHelper.GetAddress(destinationAddress);
-            datagram[cemi_start_pos + i++] = dst_address[0];
-            datagram[cemi_start_pos + i++] = dst_address[1];
-
-            datagram[cemi_start_pos + i++] = 0x01;
-            datagram[cemi_start_pos + i++] = 0x00;
-            datagram[cemi_start_pos + i] = 0x00;
-
-            return datagram;
         }
     }
 }
