@@ -34,9 +34,14 @@ Comments:
 // #ENCODING_INHERIT_FROM_PROGRAM
 
 #HELP_BEGIN
-   KNX_1Bit - gets the input data in the format xx/yy/zz:len:val
-   and triggers on/off feedbacks if address matches
-#HELP_END
+This SIMPL+ module functions as a 1-bit digital transmitter to send basic On/Off control commands from a Crestron system to a KNX network.
+
+* **Initialization:** Upon startup, the module creates a base command prefix by appending `:1:` to the user-defined `GroupAddress` parameter.
+
+* **On Command:** When the `On_tp` digital input is triggered, the module appends `"01;"` to the base prefix and transmits the resulting string out of the `To_KNX_TX$` output.
+
+* **Off Command:** When the `Off_tp` digital input is triggered, the module appends `"00;"` to the base prefix and transmits that string out of the `To_KNX_TX$` output.
+
 
 /*******************************************************************************************
   DIGITAL, ANALOG and SERIAL INPUTS and OUTPUTS

@@ -32,11 +32,20 @@ Comments:
 // #ENCODING_UTF16
 // #ENCODING_INHERIT_FROM_PARENT
 // #ENCODING_INHERIT_FROM_PROGRAM
-/*
 #HELP_BEGIN
-   (add additional lines of help lines)
-#HELP_END
-*/
+This SIMPL+ module acts as a string filter and digital routing interface for incoming KNX network messages. It compares an incoming data string against a list of up to 200 user-defined group parameters and triggers corresponding digital logic while passing unmatched messages down the line.
+
+Here is a breakdown of how the module operates:
+
+* **Initialization:** Upon startup, the module checks how many of the 200 possible `out_fb` digital outputs are actively defined in the Crestron program to optimize its processing loop.
+
+* **String Matching:** When a message arrives at the `FROM_RX$` input, the module loops through the configured `Group` parameters. It checks if the incoming message begins with any of those defined group strings.
+
+* **Digital Output & Interlocking:** If a match is found, it drives the corresponding `out_fb` digital output high (1). It also applies a mutually exclusive interlocking logic to paired outputs: triggering an even-numbered output forces the preceding odd-numbered output low (0), and triggering an odd-numbered output forces the subsequent even-numbered output low (0).
+
+* **Passthrough Routing:** Once a match is found, it stops evaluating the string. If the module loops through all defined parameters without finding a match, it routes the untouched incoming string to the `FILTERED_RX$` output so it can be handled by other modules.
+
+
 
 STRING_INPUT	FROM_RX$[64];		STRING_OUTPUT FILTERED_RX$;
 STRING_PARAMETER _SKIP_;			DIGITAL_OUTPUT _SKIP_;

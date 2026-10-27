@@ -34,9 +34,16 @@ Comments:
 // #ENCODING_INHERIT_FROM_PROGRAM
 
 #HELP_BEGIN
-   KNX_1Bit - gets the input data in the format xx/yy/zz:len:val
-   and triggers on/off feedbacks if address matches
-#HELP_END
+This SIMPL+ module encodes and transmits 2-byte floating-point analog values from a Crestron control system to a KNX network.
+
+Here is how the module operates:
+
+* **Data Conversion:** It takes a standard analog input (`Soll`), scales it by multiplying by 10, and converts it into a KNX-compatible 16-bit floating-point format. The module calculates the appropriate sign bit, exponent, and mantissa for the value.
+
+* **Message Formatting:** The calculated 16-bit value is converted into a 4-character hexadecimal string. This hex value is appended to the user-defined `GroupAddress` parameter (formatted with a `:3:` prefix) and capped with a semicolon.
+
+* **Conditional Transmission:** The module transmits the formatted command string out of the `To_KNX_TX$` output only when three specific digital inputs (`Trigger`, `Enable`, and `EnableGroup`) are all logically high simultaneously. If any of these three inputs are pushed (transition to high) while the other two are already high, the transmission is triggered.
+
 
 /*******************************************************************************************
   DIGITAL, ANALOG and SERIAL INPUTS and OUTPUTS

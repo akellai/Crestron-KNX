@@ -36,7 +36,7 @@ Comments:
 #HELP_BEGIN
    KNX_1Bit - gets the input data in the format xx/yy/zz:len:val
    and triggers on/off feedbacks if address matches
-#HELP_END
+
 
 /*******************************************************************************************
   DIGITAL, ANALOG and SERIAL INPUTS and OUTPUTS
@@ -81,8 +81,11 @@ THREADSAFE CHANGE FROM_RX$
 	if(pos = 1)
 	{
 		pos = atoi(mid(from_rx,PrefixLen+1,2));
-		On_FB = pos;
-		Off_FB = !pos;
+		if( (pos = 0) || (pos = 1) )
+		{
+			On_FB = pos;
+			Off_FB = !pos;
+		}
 	}	
 }
 

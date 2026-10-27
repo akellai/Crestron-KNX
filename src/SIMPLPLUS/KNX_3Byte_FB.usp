@@ -1,0 +1,95 @@
+/*******************************************************************************************
+  Compiler Directives
+*******************************************************************************************/
+#CATEGORY "46" "KNX"
+#DEFAULT_VOLATILE
+#ENABLE_STACK_CHECKING
+#ENABLE_TRACE
+
+#HELP_BEGIN
+This SIMPL+ module processes 3-byte KNX values.
+Outputs are interleaved in groups of 3 for each GroupAddress parameter:
+  - Signal [3*i - 2] = Byte 1
+  - Signal [3*i - 1] = Byte 2
+  - Signal [3*i]     = Byte 3
+
+
+/*******************************************************************************************
+  DIGITAL, ANALOG and SERIAL INPUTS and OUTPUTS
+*******************************************************************************************/
+DIGITAL_INPUT _SKIP_, _SKIP_, _SKIP_;
+STRING_INPUT 	FROM_RX$[64];
+
+DIGITAL_OUTPUT _SKIP_, _SKIP_, _SKIP_;
+
+// Single output array using the dynamic sizing syntax [Max, Min]
+ANALOG_OUTPUT 	Byte_Values[600, 3];
+
+/*******************************************************************************************
+  Parameters
+*******************************************************************************************/
+STRING_PARAMETER _SKIP_, _SKIP_;
+STRING_PARAMETER GroupAddress[200, 1][9];
+
+#BEGIN_PARAMETER_PROPERTIES GroupAddress
+   propDefaultValue="";
+#END_PARAMETER_PROPERTIES
+
+STRING Prefix[200][14];
+INTEGER PrefixLen[200];
+INTEGER NumInputs;
+
+CHANGE FROM_RX$
+{
+	integer pos, i, baseIdx;
+	STRING from_rx[64];
+
+	from_rx = FROM_RX$;
+
+	if( len(from_rx) < 2 )
+		return;
+
+	for( i = 1 to NumInputs step 1 )
+	{
+		if( PrefixLen[i] > 0 )
+		{
+			if( len(from_rx) < PrefixLen[i] + 6 )
+				continue;
+
+			pos = Find(Prefix[i], from_rx);
+			if( pos = 1 )
+			{
+				baseIdx = (i * 3) - 2;
+
+				Byte_Values[baseIdx]     = HexToI(mid(from_rx, PrefixLen[i] + 1, 2));	// Byte 1
+				Byte_Values[baseIdx + 1] = HexToI(mid(from_rx, PrefixLen[i] + 3, 2));	// Byte 2
+				Byte_Values[baseIdx + 2] = HexToI(mid(from_rx, PrefixLen[i] + 5, 2));	// Byte 3
+				break;
+			}
+		}
+	}
+}
+
+Function Main()
+{
+	integer i;
+
+	for( NumInputs = 200 to 1 Step -1 )
+		if( IsSignalDefined(Byte_Values[(NumInputs * 3) - 2]) )
+			Break;
+
+    WaitForInitializationComplete();
+
+	for( i = 1 to NumInputs Step 1 )
+	{
+		if( GroupAddress[i] <> "" )
+		{
+			Prefix[i] = GroupAddress[i] + ":4:";
+			PrefixLen[i] = len(Prefix[i]);
+		}
+		else
+		{
+			PrefixLen[i] = 0;
+		}
+	}
+}

@@ -32,11 +32,19 @@ Comments:
 // #ENCODING_UTF16
 // #ENCODING_INHERIT_FROM_PARENT
 // #ENCODING_INHERIT_FROM_PROGRAM
-/*
 #HELP_BEGIN
-   (add additional lines of help lines)
-#HELP_END
-*/
+This SIMPL+ module acts as a string router or demultiplexer designed for a KNX control system. It filters incoming data strings and directs them to specific outputs based on predefined prefixes.
+
+Here is the breakdown of its core functionality:
+
+Input Processing: The module listens for incoming string data (up to 64 characters) on a single input named FROM_RX$. It ignores any string shorter than 2 characters.
+
+Prefix Matching: It utilizes eight string parameters (G1 through G8) to define specific match criteria, which likely represent KNX group addresses or command headers. When a string is received, the module checks if it begins with the exact sequence defined in G1. If it doesn't, it checks G2, and so on.
+
+Targeted Routing: If the beginning of the incoming string matches one of the parameters, the entire string is immediately routed to the corresponding output (KNX_RX1$ for G1, KNX_RX2$ for G2, etc.), and the evaluation stops.
+
+Catch-All/Pass-Through: If the incoming string does not match any of the populated G1 through G8 parameters, it is sent to the TX$ output by default.
+
 
 STRING_INPUT	_SKIP_;			STRING_OUTPUT	KNX_RX1$;
 STRING_INPUT	_SKIP_;			STRING_OUTPUT	KNX_RX2$;

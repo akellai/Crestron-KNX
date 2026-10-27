@@ -34,9 +34,20 @@ Comments:
 // #ENCODING_INHERIT_FROM_PROGRAM
 
 #HELP_BEGIN
-   KNX_1Bit - gets the input data in the format xx/yy/zz:len:val
-   and triggers on/off feedbacks if address matches
-#HELP_END
+This SIMPL+ module parses 2-byte (16-bit) floating-point data from a KNX network. It is specifically designed to decode KNX 2-byte floating-point values (like temperature or sensor readings) into standard signed integers.
+
+Here is how it processes the data:
+
+* **Message Filtering:** It monitors the `FROM_RX$` string input for messages that begin with the specified `GroupAddress` parameter followed by `:3:`.
+
+* **Raw Data Extraction:** When a matching message is found, it extracts the 4-character hexadecimal string immediately following the prefix, converts it to an integer, and sends this raw value to the `Val_FB` analog output.
+
+* **Floating-Point Decoding:** It passes the 16-bit integer into a decoding function (`getVal`) that separates the data into its core components: a sign bit, a 4-bit exponent, and an 11-bit mantissa. If the value is negative, it applies two's complement logic to the mantissa.
+
+* **Value Scaling:** It applies the exponent to the mantissa and adjusts the final numerical value based on the user-defined `Mantissa` parameter to scale the decimal precision appropriately.
+
+* **Signed Output:** It caps the absolute value at 32767, applies the appropriate positive or negative sign, and sends the final calculated integer to the `Signed_Analog_Value` analog output.
+
 
 /*******************************************************************************************
   DIGITAL, ANALOG and SERIAL INPUTS and OUTPUTS

@@ -32,11 +32,21 @@ Comments:
 // #ENCODING_UTF16
 // #ENCODING_INHERIT_FROM_PARENT
 // #ENCODING_INHERIT_FROM_PROGRAM
-/*
 #HELP_BEGIN
-   (add additional lines of help lines)
-#HELP_END
-*/
+This SIMPL+ module acts as a routing interface or demultiplexer for incoming KNX network messages, sorting them based on their specific data type identifiers.
+
+* **Message Validation:** When a string arrives at the `FROM_RX$` input, the module first checks its length, immediately discarding any message shorter than 10 characters.
+
+* **Data Routing:** It inspects the valid strings for specific substrings and routes them to dedicated outputs accordingly:
+
+* Messages containing `":1:"` are sent to the 1-bit output (`KNX_1bit_TX$`).
+
+* Messages containing `":2:"` are sent to the 1-byte output (`KNX_1Byte_TX$`).
+
+* Messages containing `":3:"` are sent to the 2-byte output (`KNX_2Byte_TX$`).
+
+* **Default Passthrough:** If a valid message does not contain any of those three specific type identifiers, it is routed to a default `TX$` output to be handled by other modules.
+
 
 STRING_INPUT	_SKIP_;			STRING_OUTPUT	KNX_1bit_TX$;
 STRING_INPUT	_SKIP_;			STRING_OUTPUT	KNX_1Byte_TX$;

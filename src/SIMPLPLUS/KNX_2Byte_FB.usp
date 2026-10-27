@@ -34,9 +34,20 @@ Comments:
 // #ENCODING_INHERIT_FROM_PROGRAM
 
 #HELP_BEGIN
-   KNX_1Bit - gets the input data in the format xx/yy/zz:len:val
-   and triggers on/off feedbacks if address matches
-#HELP_END
+This SIMPL+ module acts as a multi-channel parser for a KNX network, capable of simultaneously processing 2-byte (16-bit) floating-point data for up to 200 different KNX group addresses.
+
+Here is how the module operates:
+
+* **Initialization:** Upon startup, it determines how many of the 200 possible analog outputs are actually defined in the program. For every active output, it constructs a search prefix by taking the corresponding `GroupAddress` parameter and appending `:3:` to it.
+
+* **Message Routing:** It monitors a single string input, `FROM_RX$`, for incoming KNX messages. When a message arrives, it loops through the array of configured prefixes to find a match.
+
+* **Data Extraction:** If a matching prefix is found at the beginning of the string, it extracts the subsequent 4-character hexadecimal value and converts it into an integer.
+
+* **Floating-Point Decoding:** It runs this raw integer through a decoding function (`getVal`) that breaks it down into a sign bit, a 4-bit exponent, and an 11-bit mantissa. It handles negative values using two's complement and scales the value based on the module's overall `Mantissa` parameter.
+
+* **Targeted Output:** It calculates the final signed integer (capped at an absolute value of 32767) and routes it specifically to the `Signed_Analog_Value` output index that matches the matched group address.
+
 
 /*******************************************************************************************
   DIGITAL, ANALOG and SERIAL INPUTS and OUTPUTS

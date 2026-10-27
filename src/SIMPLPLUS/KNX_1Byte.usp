@@ -34,9 +34,24 @@ Comments:
 // #ENCODING_INHERIT_FROM_PROGRAM
 
 #HELP_BEGIN
-   KNX_1Bit - gets the input data in the format xx/yy/zz:len:val
-   and triggers on/off feedbacks if address matches
-#HELP_END
+This SIMPL+ module is a parser designed for Crestron control systems to process incoming status messages from a KNX network. It listens for an 8-bit (1-byte) value associated with a specific KNX Group Address and translates that data into standard Crestron digital, analog, and string feedback signals.
+
+**How it works:**
+
+* **Filtering:** It monitors the `FROM_RX$` string input for messages that begin with the specified `GroupAddress` parameter followed by `:2:`.
+
+* **Data Extraction:** If a matching prefix is found, it extracts the 2-character hexadecimal string immediately following it and converts it to a standard integer between 0 and 255.
+
+* **Feedback Outputs:** It takes that extracted integer and updates four outputs accordingly:
+
+* **On_FB (Digital):** Drives high if the value is greater than 0.
+
+* **Off_FB (Digital):** Drives high if the value is exactly 0.
+
+* **Val_FB (Analog):** Outputs the raw integer (0-255) as an analog level.
+
+* **TextVal_FB (String):** Converts the 0-255 integer into a 0-100 percentage and outputs it as a formatted text string (e.g., "75%").
+
 
 /*******************************************************************************************
   DIGITAL, ANALOG and SERIAL INPUTS and OUTPUTS

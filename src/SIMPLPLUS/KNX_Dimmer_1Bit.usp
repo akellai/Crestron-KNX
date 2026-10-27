@@ -34,9 +34,18 @@ Comments:
 // #ENCODING_INHERIT_FROM_PROGRAM
 
 #HELP_BEGIN
-   KNX_1Bit - gets the input data in the format xx/yy/zz:len:val
-   and triggers on/off feedbacks if address matches
-#HELP_END
+This SIMPL+ module translates digital up and down control signals into formatted string commands for transmission to a KNX network.
+
+Here is how the module operates:
+
+* **Initialization:** Upon startup, it builds a base command prefix by taking the user-defined `GroupAddress` parameter and appending `:1:` to it.
+
+* **Up Action:** When the `Up_tp` digital input goes high (1), it appends `"09;"` to the base prefix and transmits the full string out the `To_KNX_TX$` output.
+
+* **Down Action:** When the `Down_tp` digital input goes high (1), it appends `"01;"` to the prefix and transmits the resulting string.
+
+* **Stop/Release Action:** When either input is released (transitions to 0), the module checks the status of the opposite input. If both `Up_tp` and `Down_tp` are at 0, it transmits a `"00;"` command to signal a stop or release action.
+
 
 /*******************************************************************************************
   DIGITAL, ANALOG and SERIAL INPUTS and OUTPUTS

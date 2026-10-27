@@ -32,11 +32,19 @@ Comments:
 // #ENCODING_UTF16
 // #ENCODING_INHERIT_FROM_PARENT
 // #ENCODING_INHERIT_FROM_PROGRAM
-/*
 #HELP_BEGIN
-   (add additional lines of help lines)
-#HELP_END
-*/
+This SIMPL+ module acts as an IP-based communication bridge between a Crestron system and a KNX router by integrating a custom SIMPL# library named "KnxTunnelSS".
+
+Here is how the module handles the network connection and data routing:
+
+* **Connection Management:** It uses `Connect` and `Disconnect` digital inputs to open or close a network tunnel to the KNX router. The connection is configured using the provided parameters for the router's IP address, remote port, local port, and the physical KNX address assigned to the Crestron system.
+
+* **State Feedback:** Delegate callbacks monitor the connection status from the SIMPL# library and update the `Connected` and `Disconnected` digital outputs accordingly.
+
+* **Bidirectional Communication:** Any string data received on the `TX$` input is passed directly to the SIMPL# client for transmission to the KNX network. Conversely, incoming messages from the KNX network trigger a callback that pushes the data out of the `RX$` string output.
+
+* **Diagnostics:** A `DEBUG` digital input toggles a debug mode within the SIMPL# client and prints trace messages to the system console, including timestamps for whenever the module disconnects.
+
 
 /*******************************************************************************************
   Include Libraries

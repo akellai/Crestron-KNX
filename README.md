@@ -20,3 +20,7 @@ The idea is to convert EIB telegrams to strings in a text format like "1/2/3:1:0
 
 Series 4 controllers (April 2024):
 More code simplification is done to get rid of memory leaks under 4-series controllers. No leaks occur on RMC3/CP3 but ~3.8 MB/day leaks on RMC4. I assume the leaks are b/c of the bugs in current 4 series firmware (might be fixed in the future). The updated module works well under both 3 and current 4 series without the need to wait for the firmware fixes. It's also possible (easy) to convert/compile specifically for 4-series (tested and it works, but for now I do not see any significant advantage of 4-series specific module)
+
+Using the SIMPL+ modules:
+- The repository ships SIMPL+ sources (.usp) only. Copy the .usp files together with KnxTunnelSS.clz into your SIMPL+ user modules folder and compile them for your target (3- or 4-series) before use. If a module shows up in SIMPL Windows as a blank symbol with no inputs/outputs, its .ush header is missing, stale or failed to compile - recompile it (see issue #12).
+- KNX_3Byte_FB receives 3-byte values (data length 4, e.g. "1/2/5:4:0C1E00") and outputs each byte on its own analog signal, three outputs per group address.

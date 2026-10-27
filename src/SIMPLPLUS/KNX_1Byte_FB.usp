@@ -34,9 +34,14 @@ Comments:
 // #ENCODING_INHERIT_FROM_PROGRAM
 
 #HELP_BEGIN
-   KNX_1Bit - gets the input data in the format xx/yy/zz:len:val
-   and triggers on/off feedbacks if address matches
-#HELP_END
+This SIMPL+ module functions as a bidirectional interface between a Crestron system and a KNX network, specifically handling analog (1-byte) values.
+
+Here is how the module operates:
+
+* **Receiving Data (Feedback):** It monitors the `FROM_RX$` input for messages starting with the defined `GroupAddress` parameter followed by `:2:`. When a matching message is received, it extracts the 2-character hexadecimal value following the prefix, converts it into an integer, and sends it to the `Val_fb` analog output.
+
+* **Transmitting Data (Control):** When the `Val_tp` analog input changes (typically driven by a touch panel or logic), the module converts that integer into a 2-character hexadecimal string. It appends this hex value to the group address prefix, adds a closing semicolon, and transmits the resulting string out the `To_KNX_TX$` output to send a command to the KNX network.
+
 
 /*******************************************************************************************
   DIGITAL, ANALOG and SERIAL INPUTS and OUTPUTS
