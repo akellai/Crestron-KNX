@@ -47,7 +47,7 @@ Here is how it processes the data:
 * **Value Scaling:** It applies the exponent to the mantissa and adjusts the final numerical value based on the user-defined `Mantissa` parameter to scale the decimal precision appropriately.
 
 * **Signed Output:** It caps the absolute value at 32767, applies the appropriate positive or negative sign, and sends the final calculated integer to the `Signed_Analog_Value` analog output.
-
+#HELP_END
 
 /*******************************************************************************************
   DIGITAL, ANALOG and SERIAL INPUTS and OUTPUTS

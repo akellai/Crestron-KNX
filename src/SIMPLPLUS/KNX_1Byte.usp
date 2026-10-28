@@ -51,7 +51,7 @@ This SIMPL+ module is a parser designed for Crestron control systems to process 
 * **Val_FB (Analog):** Outputs the raw integer (0-255) as an analog level.
 
 * **TextVal_FB (String):** Converts the 0-255 integer into a 0-100 percentage and outputs it as a formatted text string (e.g., "75%").
-
+#HELP_END
 
 /*******************************************************************************************
   DIGITAL, ANALOG and SERIAL INPUTS and OUTPUTS

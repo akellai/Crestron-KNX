@@ -43,7 +43,7 @@ Here is how the module operates:
 * **Message Formatting:** The calculated 16-bit value is converted into a 4-character hexadecimal string. This hex value is appended to the user-defined `GroupAddress` parameter (formatted with a `:3:` prefix) and capped with a semicolon.
 
 * **Conditional Transmission:** The module transmits the formatted command string out of the `To_KNX_TX$` output only when three specific digital inputs (`Trigger`, `Enable`, and `EnableGroup`) are all logically high simultaneously. If any of these three inputs are pushed (transition to high) while the other two are already high, the transmission is triggered.
-
+#HELP_END
 
 /*******************************************************************************************
   DIGITAL, ANALOG and SERIAL INPUTS and OUTPUTS

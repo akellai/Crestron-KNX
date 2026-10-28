@@ -47,7 +47,7 @@ Here is how the module operates:
 * **Floating-Point Decoding:** It runs this raw integer through a decoding function (`getVal`) that breaks it down into a sign bit, a 4-bit exponent, and an 11-bit mantissa. It handles negative values using two's complement and scales the value based on the module's overall `Mantissa` parameter.
 
 * **Targeted Output:** It calculates the final signed integer (capped at an absolute value of 32767) and routes it specifically to the `Signed_Analog_Value` output index that matches the matched group address.
-
+#HELP_END
 
 /*******************************************************************************************
   DIGITAL, ANALOG and SERIAL INPUTS and OUTPUTS

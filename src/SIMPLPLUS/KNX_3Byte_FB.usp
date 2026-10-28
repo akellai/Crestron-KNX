@@ -12,7 +12,7 @@ Outputs are interleaved in groups of 3 for each GroupAddress parameter:
   - Signal [3*i - 2] = Byte 1
   - Signal [3*i - 1] = Byte 2
   - Signal [3*i]     = Byte 3
-
+#HELP_END
 
 /*******************************************************************************************
   DIGITAL, ANALOG and SERIAL INPUTS and OUTPUTS

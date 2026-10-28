@@ -41,7 +41,7 @@ This SIMPL+ module functions as a 1-bit digital transmitter to send basic On/Off
 * **On Command:** When the `On_tp` digital input is triggered, the module appends `"01;"` to the base prefix and transmits the resulting string out of the `To_KNX_TX$` output.
 
 * **Off Command:** When the `Off_tp` digital input is triggered, the module appends `"00;"` to the base prefix and transmits that string out of the `To_KNX_TX$` output.
-
+#HELP_END
 
 /*******************************************************************************************
   DIGITAL, ANALOG and SERIAL INPUTS and OUTPUTS

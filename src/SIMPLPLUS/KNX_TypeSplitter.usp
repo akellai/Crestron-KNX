@@ -46,7 +46,7 @@ This SIMPL+ module acts as a routing interface or demultiplexer for incoming KNX
 * Messages containing `":3:"` are sent to the 2-byte output (`KNX_2Byte_TX$`).
 
 * **Default Passthrough:** If a valid message does not contain any of those three specific type identifiers, it is routed to a default `TX$` output to be handled by other modules.
-
+#HELP_END
 
 STRING_INPUT	_SKIP_;			STRING_OUTPUT	KNX_1bit_TX$;
 STRING_INPUT	_SKIP_;			STRING_OUTPUT	KNX_1Byte_TX$;

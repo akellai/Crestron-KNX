@@ -44,7 +44,7 @@ Prefix Matching: It utilizes eight string parameters (G1 through G8) to define s
 Targeted Routing: If the beginning of the incoming string matches one of the parameters, the entire string is immediately routed to the corresponding output (KNX_RX1$ for G1, KNX_RX2$ for G2, etc.), and the evaluation stops.
 
 Catch-All/Pass-Through: If the incoming string does not match any of the populated G1 through G8 parameters, it is sent to the TX$ output by default.
-
+#HELP_END
 
 STRING_INPUT	_SKIP_;			STRING_OUTPUT	KNX_RX1$;
 STRING_INPUT	_SKIP_;			STRING_OUTPUT	KNX_RX2$;

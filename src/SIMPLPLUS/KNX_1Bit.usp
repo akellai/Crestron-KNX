@@ -36,7 +36,7 @@ Comments:
 #HELP_BEGIN
    KNX_1Bit - gets the input data in the format xx/yy/zz:len:val
    and triggers on/off feedbacks if address matches
-
+#HELP_END
 
 /*******************************************************************************************
   DIGITAL, ANALOG and SERIAL INPUTS and OUTPUTS

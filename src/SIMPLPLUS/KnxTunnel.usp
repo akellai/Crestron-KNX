@@ -44,7 +44,7 @@ Here is how the module handles the network connection and data routing:
 * **Bidirectional Communication:** Any string data received on the `TX$` input is passed directly to the SIMPL# client for transmission to the KNX network. Conversely, incoming messages from the KNX network trigger a callback that pushes the data out of the `RX$` string output.
 
 * **Diagnostics:** A `DEBUG` digital input toggles a debug mode within the SIMPL# client and prints trace messages to the system console, including timestamps for whenever the module disconnects.
-
+#HELP_END
 
 /*******************************************************************************************
   Include Libraries
