@@ -1,0 +1,6 @@
+# SIMPL+ / SIMPL Windows tools need Windows (CRLF) line endings.
+# Files stay LF in the repo; checkouts and GitHub ZIP downloads get CRLF.
+*.usp  text eol=crlf
+*.ush  text eol=crlf
+*.usl  text eol=crlf
+*.smw  text eol=crlf
