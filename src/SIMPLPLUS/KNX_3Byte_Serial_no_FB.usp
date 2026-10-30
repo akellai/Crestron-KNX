@@ -1,0 +1,98 @@
+/*******************************************************************************************
+  SIMPL+ Module Information
+*******************************************************************************************/
+/*
+Dealer Name:
+System Name:
+System Number:
+Programmer:
+Comments:
+*/
+
+/*******************************************************************************************
+  Compiler Directives
+*******************************************************************************************/
+#CATEGORY "46" "KNX" // Custom
+#DEFAULT_VOLATILE
+#ENABLE_STACK_CHECKING
+#ENABLE_TRACE
+
+#HELP_BEGIN
+This SIMPL+ module formats and transmits 3-byte data values (DPT 10.001 / Time or DPT 11.001 / Date) from a Crestron control system to a KNX network.
+
+Here is how the module operates:
+
+* **Data Processing:** Takes the 3-byte serial input value (`Soll$`), extracts each byte, and formats them into a 6-character hexadecimal string representation.
+
+* **Message Formatting:** The formatted 6-character hex string is appended to the user-defined `GroupAddress` parameter (formatted with a `:4:` prefix) and capped with a semicolon.
+
+* **Conditional Transmission:** The module transmits the formatted command string out of the `To_KNX_TX$` output only when three specific digital inputs (`Trigger`, `Enable`, and `EnableGroup`) are all logically high simultaneously.
+#HELP_END
+
+/*******************************************************************************************
+  DIGITAL, ANALOG and SERIAL INPUTS and OUTPUTS
+*******************************************************************************************/
+DIGITAL_INPUT   _SKIP_;			DIGITAL_OUTPUT	_SKIP_;
+DIGITAL_INPUT   Enable;			STRING_OUTPUT	To_KNX_TX$;
+DIGITAL_INPUT   EnableGroup;	DIGITAL_OUTPUT	_SKIP_;
+DIGITAL_INPUT   Trigger;		DIGITAL_OUTPUT	_SKIP_;
+STRING_INPUT    Soll$[6];		DIGITAL_OUTPUT	_SKIP_;
+
+/*******************************************************************************************
+  Parameters
+*******************************************************************************************/
+STRING_PARAMETER GroupAddress[9];
+
+/*******************************************************************************************
+  Parameter Properties
+*******************************************************************************************/
+#BEGIN_PARAMETER_PROPERTIES GroupAddress
+   propDefaultValue = "";
+#END_PARAMETER_PROPERTIES
+
+/*******************************************************************************************
+  Global Variables
+*******************************************************************************************/
+STRING Prefix[14];
+INTEGER PrefixLen;
+ 
+Function Value()
+{
+    LONG_INTEGER Val;
+
+    // Convert an ASCII hex string (e.g. "FFFFFF") directly to a LONG_INTEGER value
+    Val = Hextol(Soll$);
+
+    // Format output as a 6-character hexadecimal string padded with leading zeros
+    MakeString(To_KNX_TX$, "%s%06X;", Prefix, Val);
+}
+/*******************************************************************************************
+  Event Handlers
+*******************************************************************************************/
+PUSH Trigger
+{
+    if ((Trigger = 1) && (Enable = 1) && (EnableGroup = 1))
+        call Value();
+}
+
+PUSH Enable
+{
+    if ((Trigger = 1) && (Enable = 1) && (EnableGroup = 1))
+        call Value();
+}
+
+PUSH EnableGroup
+{
+    if ((Trigger = 1) && (Enable = 1) && (EnableGroup = 1))
+        call Value();
+}
+
+/*******************************************************************************************
+  Main() - Must be at the very bottom
+*******************************************************************************************/
+Function Main()
+{
+    WaitForInitializationComplete();
+    Prefix = GroupAddress + ":4:";
+    PrefixLen = Len(Prefix);
+}

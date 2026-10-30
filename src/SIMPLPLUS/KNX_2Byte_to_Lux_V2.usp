@@ -1,0 +1,332 @@
+/*******************************************************************************************
+  SIMPL+ Module Information
+  (Fill in comments below)
+*******************************************************************************************/
+/*
+Dealer Name:
+System Name:
+System Number:
+Programmer:
+Comments:
+*/
+
+/*******************************************************************************************
+  Compiler Directives
+  (Uncomment and declare compiler directives as needed)
+*******************************************************************************************/
+// #ENABLE_DYNAMIC
+// #SYMBOL_NAME ""
+// #HINT ""
+// #DEFINE_CONSTANT
+#CATEGORY "46" "KNX" //Custom
+// #PRINT_TO_TRACE
+// #DIGITAL_EXPAND 
+// #ANALOG_SERIAL_EXPAND 
+// #OUTPUT_SHIFT 
+// #HELP_PDF_FILE ""
+#DEFAULT_VOLATILE
+#ENABLE_STACK_CHECKING
+#ENABLE_TRACE
+// #ENCODING_ASCII
+// #ENCODING_UTF16
+// #ENCODING_INHERIT_FROM_PARENT
+// #ENCODING_INHERIT_FROM_PROGRAM
+#HELP_BEGIN
+This SIMPL+ module decodes a 16-bit packed word from a KNX network into various illuminance (lux) output formats.
+
+Here is how the module processes the incoming data:
+
+* **Mathematical Extraction:** When the `WORD_IN` analog input changes, the module extracts the sign bit, a 4-bit exponent, and an 11-bit mantissa. Notably, it performs this extraction using standard division and modulo arithmetic rather than bitwise shift operators.
+
+
+* **Scaling and Clamping:** It calculates the exact value scaled by 100 (`sign * mantissa * 2^exponent`). Because illuminance cannot be negative, it clamps any resulting negative values to zero.
+
+
+* **Multiple Output Formats:** The module distributes the final calculated lux value across four different outputs:
+* **LUX_X100_HI & LUX_X100_LO:** The exact scaled value (lux * 100) is split into high and low 16-bit words using subtraction loops, outputting to two separate analog signals.
+
+
+* **LUX_TEXT$:** The module calculates the whole and fractional parts of the lux value, formatting them into a readable text string with two decimal places (e.g., "xxxx.xx").
+
+
+* **LUX_INT:** It rounds the exact lux value to the nearest whole number (adding 1 if the fractional part is 50 or greater) and sends it to a standard analog output capped at 65535.
+#HELP_END
+/*******************************************************************************************
+  Include Libraries
+  (Uncomment and include additional libraries as needed)
+*******************************************************************************************/
+// #CRESTRON_LIBRARY ""
+// #USER_LIBRARY ""
+
+/*******************************************************************************************
+  DIGITAL, ANALOG and SERIAL INPUTS and OUTPUTS
+  (Uncomment and declare inputs and outputs as needed)
+*******************************************************************************************/
+// DIGITAL_INPUT 
+// ANALOG_INPUT 
+// STRING_INPUT 
+// BUFFER_INPUT 
+
+// DIGITAL_OUTPUT 
+// ANALOG_OUTPUT 
+// STRING_OUTPUT 
+ANALOG_INPUT   WORD_IN;
+
+ANALOG_OUTPUT  LUX_INT;        // 0..65535
+ANALOG_OUTPUT  LUX_X100_HI;    // 0..65535
+ANALOG_OUTPUT  LUX_X100_LO;    // 0..65535
+STRING_OUTPUT  LUX_TEXT$;      // set length in SIMPL Windows (e.g., 16)
+
+/* locals */
+LONG_INTEGER data, exp, mant, signv, pow2, ecount;
+LONG_INTEGER scaled;           // exact lux*100 (can be negative before clamp)
+LONG_INTEGER scaled_copy;
+
+INTEGER out_hi, out_lo, whole, frac, out_lux;
+INTEGER i, tmpA, addQ;
+
+/*******************************************************************************************
+  SOCKETS
+  (Uncomment and define socket definitions as needed)
+*******************************************************************************************/
+// TCP_CLIENT
+// TCP_SERVER
+// UDP_SOCKET
+
+/*******************************************************************************************
+  Parameters
+  (Uncomment and declare parameters as needed)
+*******************************************************************************************/
+// INTEGER_PARAMETER
+// SIGNED_INTEGER_PARAMETER
+// LONG_INTEGER_PARAMETER
+// SIGNED_LONG_INTEGER_PARAMETER
+// STRING_PARAMETER
+
+/*******************************************************************************************
+  Parameter Properties
+  (Uncomment and declare parameter properties as needed)
+*******************************************************************************************/
+/*
+#BEGIN_PARAMETER_PROPERTIES parameter_variable, parameter_variable, ...
+   // propValidUnits = // unitString or unitDecimal|unitHex|unitPercent|unitCharacter|unitTime|unitTicks;
+   // propDefaultUnit = // unitString, unitDecimal, unitHex, unitPercent, unitCharacter, unitTime or unitTicks;
+   // propBounds = lower_bound , upper_bound;
+   // propDefaultValue = ;  // or, propDefaultValue = "";
+   // propList = // { "value" , "label" } , { "value" , "label" } , ... ;
+   // propShortDescription = "status_bar_hint_text";
+   // #BEGIN_PROP_FULL_DESCRIPTION  line_1...  line_2...  line_n  #END_PROP_FULL_DESCRIPTION
+   // #BEGIN_PROP_NOTES line_1...  line_2...  line_n  #END_PROP_NOTES
+#END_PARAMETER_PROPERTIES
+*/
+
+/*******************************************************************************************
+  Structure Definitions
+  (Uncomment and define structure definitions as needed)
+  Note:  Be sure to initialize all declared STRING variables as needed
+         For example, in Function Main: struct.myString = "";
+*******************************************************************************************/
+/*
+STRUCTURE MyStruct1
+{
+};
+
+MyStruct1 struct;
+*/
+
+/*******************************************************************************************
+  Global Variables
+  (Uncomment and declare global variables as needed)
+  Note:  Be sure to initialize all declared STRING variables as needed
+         For example, in Function Main: myString = "";
+*******************************************************************************************/
+// INTEGER
+// LONG_INTEGER
+// SIGNED_INTEGER
+// SIGNED_LONG_INTEGER
+// STRING
+
+/*******************************************************************************************
+  Functions
+  (Add any additional functions here)
+  Note:  Functions must be physically placed before the location in
+         the code that calls them.
+*******************************************************************************************/
+/*
+Function MyFunction1()
+{
+    // TODO:  Add local variable declarations here
+
+    // TODO:  Add code here
+}
+*/
+
+/*
+Integer_Function MyIntFunction1()
+{
+    // TODO:  Add local variable declarations here
+
+    // TODO:  Add code here
+
+    Return (0);
+}
+*/
+
+/*
+String_Function MyStrFunction1()
+{
+    // TODO:  Add local variable declarations here
+
+    // TODO:  Add code here
+
+    Return ("");
+}
+*/
+
+/*******************************************************************************************
+  Event Handlers
+  (Uncomment and declare additional event handlers as needed)
+*******************************************************************************************/
+/*
+PUSH input
+{
+    // TODO:  Add code here
+}
+*/
+
+/*
+RELEASE input
+{
+    // TODO:  Add code here
+}
+*/
+
+/*
+CHANGE input
+{
+    // TODO:  Add code here
+}
+*/
+
+CHANGE WORD_IN
+{
+    // 1) Read packed word
+    data = WORD_IN;
+
+    // 2) Extract fields without bitwise/shifts
+    // sign bit = floor(data / 32768) (0 or 1)
+    IF ( (data / 32768) >= 1 )  signv = -1;
+    ELSE                        signv =  1;
+
+    exp  = (data / 2048) MOD 16;   // bits14..11
+    mant =  data MOD 2048;         // bits10..0 (UNSIGNED magnitude 0..2047)
+
+    // 3) exact scaled value: lux*100 = sign * mant * 2^exp
+    pow2 = 1;
+    ecount = exp;
+    WHILE (ecount > 0) { pow2 = pow2 * 2; ecount = ecount - 1; }
+    scaled = signv * mant * pow2;
+
+    // Illuminance cannot be negative ¡÷ clamp to zero
+    IF (scaled < 0) { scaled = 0; }
+
+    // 4) Split lux*100 into HI/LO words (no bitwise)
+    scaled_copy = scaled;
+    out_hi = 0;
+    WHILE (scaled_copy >= 65536) {
+        scaled_copy = scaled_copy - 65536;
+        out_hi = out_hi + 1;
+        IF (out_hi > 65535) { out_hi = 65535; }  // saturate
+    }
+    out_lo = 0;
+    WHILE (scaled_copy > 0) {
+        scaled_copy = scaled_copy - 1;
+        out_lo = out_lo + 1;
+        IF (out_lo > 65535) { out_lo = 65535; }
+    }
+    LUX_X100_HI = out_hi;
+    LUX_X100_LO = out_lo;
+
+    // 5) Compute whole/frac from HI/LO only (avoid LONG¡÷INTEGER narrows)
+    // scaled / 100 = out_hi*655 + floor((out_hi*36 + out_lo)/100)
+    whole = 0;
+    i = 0; WHILE (i < out_hi) { whole = whole + 600; i = i + 1; }
+    i = 0; WHILE (i < out_hi) { whole = whole + 55;  i = i + 1; }
+
+    tmpA = 0;  // tmpA = out_hi*36 + out_lo
+    i = 0; WHILE (i < out_hi) { tmpA = tmpA + 36; i = i + 1; }
+    tmpA = tmpA + out_lo;
+
+    addQ = 0;  // addQ = floor(tmpA/100)
+    WHILE (tmpA >= 100) { tmpA = tmpA - 100; addQ = addQ + 1; }
+
+    whole = whole + addQ;
+    frac  = tmpA;            // 0..99
+
+    // 6) Text "xxxx.xx"
+    IF (frac < 10)
+        LUX_TEXT$ = Itoa(whole) + ".0" + Itoa(frac);
+    ELSE
+        LUX_TEXT$ = Itoa(whole) + "." + Itoa(frac);
+
+    // 7) Rounded lux: (scaled + 50) / 100  ¡÷  whole + (frac>=50 ? 1:0)
+    out_lux = whole;
+    IF (frac >= 50) { IF (out_lux < 65535) { out_lux = out_lux + 1; } }
+    LUX_INT = out_lux;
+}
+
+/*
+EVENT
+{
+    // TODO:  Add code here
+}
+*/
+
+/*
+SOCKETCONNECT
+{
+    // TODO:  Add code here
+}
+*/
+
+/*
+SOCKETDISCONNECT
+{
+    // TODO:  Add code here
+}
+*/
+
+/*
+SOCKETRECEIVE
+{
+    // TODO:  Add code here
+}
+*/
+
+/*
+SOCKETSTATUS
+{
+    // TODO:  Add code here
+}
+*/
+
+/*******************************************************************************************
+  Main()
+  Uncomment and place one-time startup code here
+  (This code will get called when the system starts up)
+*******************************************************************************************/
+/*
+Function Main()
+{
+    // TODO:  Add code here
+    // Initialize declared global and local variables/arrays as needed.
+
+    // WaitForInitializationComplete();
+    // If you are reading any Input or Output variables, uncomment
+    //   the WaitForInitializationComplete statement above and read
+    //   them afterwards.  Input/Output variables will not have
+    //   their correct values set until after the logic processor
+    //   runs and propagates the values to them.
+}
+*/
+
